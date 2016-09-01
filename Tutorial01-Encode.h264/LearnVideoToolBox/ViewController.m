@@ -139,10 +139,33 @@
             return ;
         }
         
-        // Set the properties
+        // 实时编码输出；避免编码延迟
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue);
-        VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_AutoLevel);
         
+        // h264 profile, 直播一般使用baseline，可减少由于b帧带来的延时
+        VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Baseline_AutoLevel);
+        
+        // // 设置关键帧间隔，即gop size
+        int frameInterval = 10;
+        CFNumberRef  frameIntervalRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &frameInterval);
+        VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, frameIntervalRef);
+        
+        // 设置帧率，只用于初始化session，不是实际FPS
+        int fps = 10;
+        CFNumberRef  fpsRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &fps);
+        VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsRef);
+        
+        
+        
+        //设置码率，上限，单位是bps
+        int bitRate = width * height * 3 * 4 * 8;
+        CFNumberRef bitRateRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRate);
+        VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_AverageBitRate, bitRateRef);
+        
+        //设置码率，均值，单位是byte
+        int bitRateLimit = width * height * 3 * 4;
+        CFNumberRef bitRateLimitRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRateLimit);
+        VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_DataRateLimits, bitRateLimitRef);
         
         // Tell the encoder to start encoding
         VTCompressionSessionPrepareToEncodeFrames(EncodingSession);
@@ -153,6 +176,7 @@
 - (void) encode:(CMSampleBufferRef )sampleBuffer
 {
     CVImageBufferRef imageBuffer = (CVImageBufferRef)CMSampleBufferGetImageBuffer(sampleBuffer);
+    // 帧时间，如果不设置会导致时间轴过长。
     CMTime presentationTimeStamp = CMTimeMake(frameID++, 1000);
     VTEncodeInfoFlags flags;
     OSStatus statusCode = VTCompressionSessionEncodeFrame(EncodingSession,
@@ -171,21 +195,22 @@
     NSLog(@"H264: VTCompressionSessionEncodeFrame Success");
 }
 
-void didCompressH264(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStatus status, VTEncodeInfoFlags infoFlags,
-                     CMSampleBufferRef sampleBuffer )
-{
+// 编码完成回调
+void didCompressH264(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStatus status, VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer) {
     NSLog(@"didCompressH264 called with status %d infoFlags %d", (int)status, (int)infoFlags);
-    if (status != 0) return;
+    if (status != 0) {
+        return;
+    }
     
-    if (!CMSampleBufferDataIsReady(sampleBuffer))
-    {
+    if (!CMSampleBufferDataIsReady(sampleBuffer)) {
         NSLog(@"didCompressH264 data is not ready ");
         return;
     }
     ViewController* encoder = (__bridge ViewController*)outputCallbackRefCon;
     
     bool keyframe = !CFDictionaryContainsKey( (CFArrayGetValueAtIndex(CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, true), 0)), kCMSampleAttachmentKey_NotSync);
-    
+    // 判断当前帧是否为关键帧
+    // 获取sps & pps数据
     if (keyframe)
     {
         CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(sampleBuffer);
@@ -216,16 +241,16 @@ void didCompressH264(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStat
     char *dataPointer;
     OSStatus statusCodeRet = CMBlockBufferGetDataPointer(dataBuffer, 0, &length, &totalLength, &dataPointer);
     if (statusCodeRet == noErr) {
-        
         size_t bufferOffset = 0;
-        static const int AVCCHeaderLength = 4;
+        static const int AVCCHeaderLength = 4; // 返回的nalu数据前四个字节不是0001的startcode，而是大端模式的帧长度length
+        
+        // 循环获取nalu数据
         while (bufferOffset < totalLength - AVCCHeaderLength) {
-            
-            // Read the NAL unit length
             uint32_t NALUnitLength = 0;
+            // Read the NAL unit length
             memcpy(&NALUnitLength, dataPointer + bufferOffset, AVCCHeaderLength);
             
-            // Convert the length value from Big-endian to Little-endian
+            // 从大端转系统端
             NALUnitLength = CFSwapInt32BigToHost(NALUnitLength);
             
             NSData* data = [[NSData alloc] initWithBytes:(dataPointer + bufferOffset + AVCCHeaderLength) length:NALUnitLength];
