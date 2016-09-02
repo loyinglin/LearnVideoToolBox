@@ -22,7 +22,6 @@
 @implementation ViewController
 {
     int frameID;
-    bool mRecording;
     dispatch_queue_t mCaptureQueue;
     dispatch_queue_t mEncodeQueue;
     VTCompressionSessionRef EncodingSession;
