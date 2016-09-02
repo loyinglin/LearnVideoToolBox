@@ -138,22 +138,19 @@
             return ;
         }
         
-        // 实时编码输出；避免编码延迟
+        // 设置实时编码输出（避免延迟）
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue);
-        
-        // h264 profile, 直播一般使用baseline，可减少由于b帧带来的延时
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Baseline_AutoLevel);
         
-        // // 设置关键帧间隔，即gop size
+        // 设置关键帧（GOPsize)间隔
         int frameInterval = 10;
         CFNumberRef  frameIntervalRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &frameInterval);
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, frameIntervalRef);
         
-        // 设置帧率，只用于初始化session，不是实际FPS
+        // 设置期望帧率
         int fps = 10;
         CFNumberRef  fpsRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &fps);
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsRef);
-        
         
         
         //设置码率，上限，单位是bps

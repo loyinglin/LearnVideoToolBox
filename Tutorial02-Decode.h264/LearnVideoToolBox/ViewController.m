@@ -80,7 +80,7 @@ const uint8_t lyStartCode[4] = {0, 0, 0, 1};
 }
 
 - (void)onInputStart {
-    inputStream = [[NSInputStream alloc] initWithFileAtPath:[[NSBundle mainBundle] pathForResource:@"abc" ofType:@"h264"]];
+    inputStream = [[NSInputStream alloc] initWithFileAtPath:[[NSBundle mainBundle] pathForResource:@"qwe" ofType:@"h264"]];
     [inputStream open];
     inputSize = 0;
     inputMaxSize = 640 * 480 * 3 * 4;

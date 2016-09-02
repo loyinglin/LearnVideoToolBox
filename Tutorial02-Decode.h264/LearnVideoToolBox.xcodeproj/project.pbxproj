@@ -19,6 +19,7 @@
 		FD315BAF1D78503C000CC96D /* abc.h264 in Resources */ = {isa = PBXBuildFile; fileRef = FD315BAE1D78503C000CC96D /* abc.h264 */; };
 		FD315BB21D78607F000CC96D /* Shader.fsh in Resources */ = {isa = PBXBuildFile; fileRef = FD315BB01D78607F000CC96D /* Shader.fsh */; };
 		FD315BB31D78607F000CC96D /* Shader.vsh in Resources */ = {isa = PBXBuildFile; fileRef = FD315BB11D78607F000CC96D /* Shader.vsh */; };
+		FD315BB51D79180A000CC96D /* qwe.h264 in Resources */ = {isa = PBXBuildFile; fileRef = FD315BB41D79180A000CC96D /* qwe.h264 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +52,7 @@
 		FD315BAE1D78503C000CC96D /* abc.h264 */ = {isa = PBXFileReference; lastKnownFileType = file; path = abc.h264; sourceTree = "<group>"; };
 		FD315BB01D78607F000CC96D /* Shader.fsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Shader.fsh; sourceTree = "<group>"; };
 		FD315BB11D78607F000CC96D /* Shader.vsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Shader.vsh; sourceTree = "<group>"; };
+		FD315BB41D79180A000CC96D /* qwe.h264 */ = {isa = PBXFileReference; lastKnownFileType = file; path = qwe.h264; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +96,7 @@
 		FD315B811D77F89E000CC96D /* LearnVideoToolBox */ = {
 			isa = PBXGroup;
 			children = (
+				FD315BB41D79180A000CC96D /* qwe.h264 */,
 				FD315BB01D78607F000CC96D /* Shader.fsh */,
 				FD315BB11D78607F000CC96D /* Shader.vsh */,
 				FD315BAE1D78503C000CC96D /* abc.h264 */,
@@ -210,6 +213,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FD315BAF1D78503C000CC96D /* abc.h264 in Resources */,
+				FD315BB51D79180A000CC96D /* qwe.h264 in Resources */,
 				FD315B921D77F89E000CC96D /* LaunchScreen.storyboard in Resources */,
 				FD315BB31D78607F000CC96D /* Shader.vsh in Resources */,
 				FD315B8F1D77F89E000CC96D /* Assets.xcassets in Resources */,
