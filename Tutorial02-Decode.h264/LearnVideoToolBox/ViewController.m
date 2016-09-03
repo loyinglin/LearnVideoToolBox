@@ -60,10 +60,10 @@ const uint8_t lyStartCode[4] = {0, 0, 0, 1};
     
     
     self.mDispalyLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateFrame)];
-//    self.mDispalyLink.frameInterval = 2;
+    //    self.mDispalyLink.frameInterval = 2;
     [self.mDispalyLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
     [self.mDispalyLink setPaused:YES];
-
+    
 }
 
 - (void)didReceiveMemoryWarning {
@@ -73,14 +73,11 @@ const uint8_t lyStartCode[4] = {0, 0, 0, 1};
 
 - (void)onClick:(UIButton *)button {
     button.hidden = YES;
-    dispatch_async(mDecodeQueue, ^{
-        [self startDecode];
-    });
-    
+    [self startDecode];
 }
 
 - (void)onInputStart {
-    inputStream = [[NSInputStream alloc] initWithFileAtPath:[[NSBundle mainBundle] pathForResource:@"qwe" ofType:@"h264"]];
+    inputStream = [[NSInputStream alloc] initWithFileAtPath:[[NSBundle mainBundle] pathForResource:@"abc" ofType:@"h264"]];
     [inputStream open];
     inputSize = 0;
     inputMaxSize = 640 * 480 * 3 * 4;
@@ -132,8 +129,7 @@ const uint8_t lyStartCode[4] = {0, 0, 0, 1};
     }
 }
 
-void didDecompress( void *decompressionOutputRefCon, void *sourceFrameRefCon, OSStatus status, VTDecodeInfoFlags infoFlags, CVImageBufferRef pixelBuffer, CMTime presentationTimeStamp, CMTime presentationDuration ){
-    
+void didDecompress(void *decompressionOutputRefCon, void *sourceFrameRefCon, OSStatus status, VTDecodeInfoFlags infoFlags, CVImageBufferRef pixelBuffer, CMTime presentationTimeStamp, CMTime presentationDuration ){
     CVPixelBufferRef *outputPixelBuffer = (CVPixelBufferRef *)sourceFrameRefCon;
     *outputPixelBuffer = CVPixelBufferRetain(pixelBuffer);
 }
@@ -146,48 +142,52 @@ void didDecompress( void *decompressionOutputRefCon, void *sourceFrameRefCon, OS
 }
 
 -(void)updateFrame {
-    if (inputStream) {
-        [self readPacket];
-        if(packetBuffer == NULL || packetSize == 0) {
-            [self onInputEnd];
-            return ;
-        }
-        uint32_t nalSize = (uint32_t)(packetSize - 4);
-        uint32_t *pNalSize = (uint32_t *)packetBuffer;
-        *pNalSize = CFSwapInt32HostToBig(nalSize);
-        
-        // 在buffer的前面填入代表长度的int
-        CVPixelBufferRef pixelBuffer = NULL;
-        int nalType = packetBuffer[4] & 0x1F;
-        switch (nalType) {
-            case 0x05:
-                NSLog(@"Nal type is IDR frame");
-                [self initVideoToolBox];
-                pixelBuffer = [self decode];
-                break;
-            case 0x07:
-                NSLog(@"Nal type is SPS");
-                mSPSSize = packetSize - 4;
-                mSPS = malloc(mSPSSize);
-                memcpy(mSPS, packetBuffer + 4, mSPSSize);
-                break;
-            case 0x08:
-                NSLog(@"Nal type is PPS");
-                mPPSSize = packetSize - 4;
-                mPPS = malloc(mPPSSize);
-                memcpy(mPPS, packetBuffer + 4, mPPSSize);
-                break;
-            default:
-                NSLog(@"Nal type is B/P frame");
-                pixelBuffer = [self decode];
-                break;
-        }
-        
-        if(pixelBuffer) {
-            [self.mOpenGLView displayPixelBuffer:pixelBuffer];
-            CVPixelBufferRelease(pixelBuffer);
-        }
-        NSLog(@"Read Nalu size %ld", packetSize);
+    if (inputStream){
+        dispatch_sync(mDecodeQueue, ^{
+            [self readPacket];
+            if(packetBuffer == NULL || packetSize == 0) {
+                [self onInputEnd];
+                return ;
+            }
+            uint32_t nalSize = (uint32_t)(packetSize - 4);
+            uint32_t *pNalSize = (uint32_t *)packetBuffer;
+            *pNalSize = CFSwapInt32HostToBig(nalSize);
+            
+            // 在buffer的前面填入代表长度的int
+            CVPixelBufferRef pixelBuffer = NULL;
+            int nalType = packetBuffer[4] & 0x1F;
+            switch (nalType) {
+                case 0x05:
+                    NSLog(@"Nal type is IDR frame");
+                    [self initVideoToolBox];
+                    pixelBuffer = [self decode];
+                    break;
+                case 0x07:
+                    NSLog(@"Nal type is SPS");
+                    mSPSSize = packetSize - 4;
+                    mSPS = malloc(mSPSSize);
+                    memcpy(mSPS, packetBuffer + 4, mSPSSize);
+                    break;
+                case 0x08:
+                    NSLog(@"Nal type is PPS");
+                    mPPSSize = packetSize - 4;
+                    mPPS = malloc(mPPSSize);
+                    memcpy(mPPS, packetBuffer + 4, mPPSSize);
+                    break;
+                default:
+                    NSLog(@"Nal type is B/P frame");
+                    pixelBuffer = [self decode];
+                    break;
+            }
+            
+            if(pixelBuffer) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self.mOpenGLView displayPixelBuffer:pixelBuffer];
+                    CVPixelBufferRelease(pixelBuffer);
+                });
+            }
+            NSLog(@"Read Nalu size %ld", packetSize);
+        });
     }
 }
 
@@ -213,6 +213,7 @@ void didDecompress( void *decompressionOutputRefCon, void *sourceFrameRefCon, OS
             if (status == kCMBlockBufferNoErr && sampleBuffer) {
                 VTDecodeFrameFlags flags = 0;
                 VTDecodeInfoFlags flagOut = 0;
+                // 默认是同步操作->会调用didDecompress，再回调
                 OSStatus decodeStatus = VTDecompressionSessionDecodeFrame(mDecodeSession,
                                                                           sampleBuffer,
                                                                           flags,
@@ -271,7 +272,7 @@ void didDecompress( void *decompressionOutputRefCon, void *sourceFrameRefCon, OS
             NSLog(@"IOS8VT: reset decoder session failed status=%d", status);
         }
         
-
+        
     }
 }
 
