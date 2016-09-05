@@ -60,7 +60,7 @@ const uint8_t lyStartCode[4] = {0, 0, 0, 1};
     
     
     self.mDispalyLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateFrame)];
-    //    self.mDispalyLink.frameInterval = 2;
+        self.mDispalyLink.frameInterval = 2; // 默认是30FPS的帧率录制
     [self.mDispalyLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
     [self.mDispalyLink setPaused:YES];
     
@@ -213,7 +213,8 @@ void didDecompress(void *decompressionOutputRefCon, void *sourceFrameRefCon, OSS
             if (status == kCMBlockBufferNoErr && sampleBuffer) {
                 VTDecodeFrameFlags flags = 0;
                 VTDecodeInfoFlags flagOut = 0;
-                // 默认是同步操作->会调用didDecompress，再回调
+                // 默认是同步操作。
+                // 调用didDecompress，返回后再回调
                 OSStatus decodeStatus = VTDecompressionSessionDecodeFrame(mDecodeSession,
                                                                           sampleBuffer,
                                                                           flags,
