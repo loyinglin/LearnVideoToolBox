@@ -118,16 +118,9 @@
 
 /**
  *  A callback function that supplies audio data to convert. This callback is invoked repeatedly as the converter is ready for new input data.
- *
- *  @param inAudioConverter         <#inAudioConverter description#>
- *  @param ioNumberDataPackets      <#ioNumberDataPackets description#>
- *  @param ioData                   <#ioData description#>
- *  @param outDataPacketDescription <#outDataPacketDescription description#>
- *  @param inUserData               <#inUserData description#>
- *
- *  @return <#return value description#>
+ 
  */
-static OSStatus inInputDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberDataPackets, AudioBufferList *ioData, AudioStreamPacketDescription **outDataPacketDescription, void *inUserData)
+OSStatus inInputDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberDataPackets, AudioBufferList *ioData, AudioStreamPacketDescription **outDataPacketDescription, void *inUserData)
 {
     AACEncoder *encoder = (__bridge AACEncoder *)(inUserData);
     UInt32 requestedPackets = *ioNumberDataPackets;
@@ -145,10 +138,6 @@ static OSStatus inInputDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNu
 
 /**
  *  填充PCM到缓冲区
- *
- *  @param ioData <#ioData description#>
- *
- *  @return <#return value description#>
  */
 - (size_t) copyPCMSamplesIntoBuffer:(AudioBufferList*)ioData {
     size_t originalBufferSize = _pcmBufferSize;

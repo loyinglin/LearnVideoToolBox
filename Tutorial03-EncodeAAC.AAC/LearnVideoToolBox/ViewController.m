@@ -22,7 +22,6 @@
 @property (nonatomic , strong) AVCaptureVideoPreviewLayer *mPreviewLayer;
 
 @property (nonatomic , strong) AACEncoder *mAudioEncoder;
-
 @end
 
 @implementation ViewController
@@ -33,6 +32,7 @@
     VTCompressionSessionRef EncodingSession;
     CMFormatDescriptionRef  format;
     NSFileHandle *fileHandle;
+    NSFileHandle *audioFileHandle;
 }
 
 - (void)viewDidLoad {
@@ -128,6 +128,14 @@
     [[NSFileManager defaultManager] removeItemAtPath:file error:nil];
     [[NSFileManager defaultManager] createFileAtPath:file contents:nil attributes:nil];
     fileHandle = [NSFileHandle fileHandleForWritingAtPath:file];
+    
+    
+    NSString *audioFile = [[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject] stringByAppendingPathComponent:@"abc.aac"];
+    [[NSFileManager defaultManager] removeItemAtPath:audioFile error:nil];
+    [[NSFileManager defaultManager] createFileAtPath:audioFile contents:nil attributes:nil];
+    audioFileHandle = [NSFileHandle fileHandleForWritingAtPath:audioFile];
+    
+    
     [self initVideoToolBox];
     [self.mCaptureSession startRunning];
 }
@@ -138,6 +146,8 @@
     [self EndVideoToolBox];
     [fileHandle closeFile];
     fileHandle = NULL;
+    [audioFileHandle closeFile];
+    audioFileHandle = NULL;
 }
 
 
@@ -151,7 +161,7 @@
     else {
         dispatch_sync(mEncodeQueue, ^{
             [self.mAudioEncoder encodeSampleBuffer:sampleBuffer completionBlock:^(NSData *encodedData, NSError *error) {
-                NSLog(@"audio encode back %@, %@", encodedData, error);
+                [audioFileHandle writeData:encodedData];
             }];
         });
     }
