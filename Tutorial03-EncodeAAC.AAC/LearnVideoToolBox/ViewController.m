@@ -42,7 +42,7 @@
     self.mLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, 200, 100)];
     self.mLabel.textColor = [UIColor redColor];
     [self.view addSubview:self.mLabel];
-    self.mLabel.text = @"测试H264硬编码";
+    self.mLabel.text = @"H264和AAC编码";
     
     UIButton *button = [[UIButton alloc] initWithFrame:CGRectMake(200, 20, 100, 100)];
     [button setTitle:@"play" forState:UIControlStateNormal];

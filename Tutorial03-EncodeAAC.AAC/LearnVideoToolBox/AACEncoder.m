@@ -72,6 +72,7 @@
  *  @param type         编码格式
  *  @param manufacturer 软/硬编
  *
+ 编解码器（codec）指的是一个能够对一个信号或者一个数据流进行变换的设备或者程序。这里指的变换既包括将 信号或者数据流进行编码（通常是为了传输、存储或者加密）或者提取得到一个编码流的操作，也包括为了观察或者处理从这个编码流中恢复适合观察或操作的形式的操作。编解码器经常用在视频会议和流媒体等应用中。
  *  @return 指定编码器
  */
 - (AudioClassDescription *)getAudioClassDescriptionWithType:(UInt32)type
