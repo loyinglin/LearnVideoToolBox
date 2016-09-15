@@ -32,7 +32,7 @@
     self.mLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, 200, 100)];
     self.mLabel.textColor = [UIColor redColor];
     [self.view addSubview:self.mLabel];
-    self.mLabel.text = @"测试ACC解码";
+    self.mLabel.text = @"测试ACC播放";
     
     self.mCurrentTimeLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 200, 100)];
     self.mCurrentTimeLabel.textColor = [UIColor redColor];
