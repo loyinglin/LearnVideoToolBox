@@ -1,0 +1,1 @@
+../../../LFLiveKit/LFLiveKit/Vendor/GPUImage/GPUImageXYDerivativeFilter.h
