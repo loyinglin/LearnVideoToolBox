@@ -92,6 +92,7 @@
         [sender setTitle:@"结束直播" forState:UIControlStateNormal];
         LFLiveStreamInfo *stream = [LFLiveStreamInfo new];
         stream.url = @"rtmp://172.17.44.151:1935/rtmplive/abc";
+//        stream.url = @"rtmp://172.17.44.151:1935/hls/abc";
         [self.session startLive:stream];
     }
     else {
