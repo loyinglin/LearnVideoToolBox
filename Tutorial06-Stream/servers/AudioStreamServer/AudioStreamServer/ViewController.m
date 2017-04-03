@@ -25,10 +25,10 @@ const int port = 51515;
 
 
 /**
- 如果尝试send到一个已关闭的 socket上两次，就会出现此信号，也就是用协议TCP的socket编程，服务器是不能知道客户机什么时候已经关闭了socket，导致还在向该已关 闭的socket上send，导致SIGPIPE。
- 而系统默认产生SIGPIPE信号的措施是关闭进程，所以出现了服务器也退出。
+ 对已经失效的socket，send两次数据就会触发SIGPIPE信号，默认的处理是关闭进程。
  */
 - (int)startServer {
+    // open file
     FILE* file = fopen([[[NSBundle mainBundle] pathForResource:@"chenli" ofType:@"mp3"] UTF8String], "r");
     if (file == NULL) {
         printf("error file path\n");
@@ -36,8 +36,7 @@ const int port = 51515;
     }
     
     // create listener socket
-    int listener_socket;
-    listener_socket = socket(AF_INET, SOCK_STREAM, 0);
+    int listener_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (listener_socket < 0) {
         printf("can't create listener_socket\n");
         return 1;

@@ -318,15 +318,16 @@ void MyAudioQueueOutputCallback(	void*					inClientData,
     
     unsigned int bufIndex = MyFindQueueBuffer(myData, inBuffer);
     
-    // 不安全，返回-1可能会奔溃
+    if (bufIndex != -1) {
+        // signal waiting thread that the buffer is free.
+        printf("MyAudioQueueOutputCallback->lock\n");
+        pthread_mutex_lock(&myData->mutex);
+        myData->inuse[bufIndex] = false;
+        pthread_cond_signal(&myData->cond);
+        printf("MyAudioQueueOutputCallback->unlock\n");
+        pthread_mutex_unlock(&myData->mutex);
+    }
     
-    // signal waiting thread that the buffer is free.
-    printf("MyAudioQueueOutputCallback->lock\n");
-    pthread_mutex_lock(&myData->mutex);
-    myData->inuse[bufIndex] = false;
-    pthread_cond_signal(&myData->cond);
-    printf("MyAudioQueueOutputCallback->unlock\n");
-    pthread_mutex_unlock(&myData->mutex);
 }
 
 void MyAudioQueueIsRunningCallback(		void*					inClientData,
@@ -351,6 +352,7 @@ void MyAudioQueueIsRunningCallback(		void*					inClientData,
 int MyConnectSocket() {
     
     int connection_socket;
+    // 这里的host，要改成对应的地址！！！
     struct hostent *host = gethostbyname("192.168.1.102");
     if (!host) { printf("can't get host\n"); return -1; }
     
