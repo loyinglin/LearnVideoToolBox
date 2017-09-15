@@ -26,27 +26,6 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     NSInputStream *inputSteam;
 }
 
-
-- (instancetype)init {
-    self = [super init];
-    [self customAudioConfig];
-    
-    return self;
-}
-
-- (void)customAudioConfig {
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"pcm"];
-    inputSteam = [NSInputStream inputStreamWithURL:url];
-    
-    if (!inputSteam) {
-        NSLog(@"打开文件失败 %@", url);
-    }
-    else {
-        [inputSteam open];
-    }
-}
-
-
 - (void)play {
     [self initPlayer];
     AudioOutputUnitStart(audioUnit);
@@ -65,12 +44,22 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 
 - (void)initPlayer {
+    // open pcm stream
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"pcm"];
+    inputSteam = [NSInputStream inputStreamWithURL:url];
+    if (!inputSteam) {
+        NSLog(@"打开文件失败 %@", url);
+    }
+    else {
+        [inputSteam open];
+    }
+    
     NSError *error = nil;
     OSStatus status = noErr;
     
+    // set audio session
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayback error:&error];
-    
     
     
     AudioComponentDescription audioDesc;
