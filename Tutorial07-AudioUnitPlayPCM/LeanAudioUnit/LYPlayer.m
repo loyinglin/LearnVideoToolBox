@@ -72,7 +72,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     AudioComponent inputComponent = AudioComponentFindNext(NULL, &audioDesc);
     AudioComponentInstanceNew(inputComponent, &audioUnit);
     
-    // BUFFER
+    // buffer
     UInt32 flag = 0;
     AudioUnitSetProperty(audioUnit,
                          kAudioUnitProperty_ShouldAllocateBuffer,
@@ -88,7 +88,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
     
     
-    //initAudioProperty
+    //audio property
     flag = 1;
     if (flag) {
         status = AudioUnitSetProperty(audioUnit,
@@ -103,7 +103,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     }
     
     
-    //initFormat
+    // format
     AudioStreamBasicDescription outputFormat;
     memset(&outputFormat, 0, sizeof(outputFormat));
     outputFormat.mSampleRate       = 44100;
@@ -133,7 +133,16 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     }
     
     
-    [self initPlayCallback];
+    // callback
+    AURenderCallbackStruct playCallback;
+    playCallback.inputProc = PlayCallback;
+    playCallback.inputProcRefCon = (__bridge void *)self;
+    AudioUnitSetProperty(audioUnit,
+                         kAudioUnitProperty_SetRenderCallback,
+                         kAudioUnitScope_Input,
+                         OUTPUT_BUS,
+                         &playCallback,
+                         sizeof(playCallback));
     
     
     OSStatus result = AudioUnitInitialize(audioUnit);
@@ -158,18 +167,6 @@ static OSStatus PlayCallback(void *inRefCon,
         });
     }
     return noErr;
-}
-
-- (void)initPlayCallback {
-    AURenderCallbackStruct playCallback;
-    playCallback.inputProc = PlayCallback;
-    playCallback.inputProcRefCon = (__bridge void *)self;
-    AudioUnitSetProperty(audioUnit,
-                         kAudioUnitProperty_SetRenderCallback,
-                         kAudioUnitScope_Input,
-                         OUTPUT_BUS,
-                         &playCallback,
-                         sizeof(playCallback));
 }
 
 

@@ -39,50 +39,29 @@
 
 
 - (void)initRemoteIO {
-    [self initAudioSession];
-    
-    [self initBuffer];
-    
-    [self initAudioComponent];
-    
-    [self initFormat];
-    
-    [self initAudioProperty];
-    
-    [self initRecordeCallback];
-    
-    [self initPlayCallback];
-    OSStatus result = AudioUnitInitialize(audioUnit);
-    NSLog(@"result %d", result);
-}
-
-- (void)initAudioSession {
     NSError *error;
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-    
     [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&error];
     [audioSession setPreferredSampleRate:44100 error:&error];
     [audioSession setPreferredInputNumberOfChannels:1 error:&error];
     [audioSession setPreferredIOBufferDuration:0.022 error:&error];
-}
-
-- (void)initBuffer {
-    UInt32 flag = 0;
-    AudioUnitSetProperty(audioUnit,
-                         kAudioUnitProperty_ShouldAllocateBuffer,
-                         kAudioUnitScope_Output,
-                         INPUT_BUS,
-                         &flag,
-                         sizeof(flag));
+    
+    
+//    UInt32 flag = 0;
+//    AudioUnitSetProperty(audioUnit,
+//                         kAudioUnitProperty_ShouldAllocateBuffer,
+//                         kAudioUnitScope_Output,
+//                         INPUT_BUS,
+//                         &flag,
+//                         sizeof(flag));
     
     buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
     buffList->mNumberBuffers = 1;
     buffList->mBuffers[0].mNumberChannels = 1;
     buffList->mBuffers[0].mDataByteSize = 22048 * sizeof(short);
     buffList->mBuffers[0].mData = malloc(sizeof(short) * 2048);
-}
-
-- (void)initAudioComponent {
+    
+    
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
     audioDesc.componentSubType = kAudioUnitSubType_RemoteIO;
@@ -92,9 +71,7 @@
     
     AudioComponent inputComponent = AudioComponentFindNext(NULL, &audioDesc);
     AudioComponentInstanceNew(inputComponent, &audioUnit);
-}
-
-- (void)initFormat {
+    
     AudioStreamBasicDescription audioFormat;
     audioFormat.mSampleRate = 44100;
     audioFormat.mFormatID = kAudioFormatLinearPCM;
@@ -146,10 +123,23 @@
     if (status != noErr) {
         NSLog(@"AudioUnitGetProperty error, ret: %d", status);
     }
-}
-
-
-- (void)initRecordeCallback {
+    
+    
+    UInt32 flag = 1;
+    AudioUnitSetProperty(audioUnit,
+                         kAudioOutputUnitProperty_EnableIO,
+                         kAudioUnitScope_Input,
+                         INPUT_BUS,
+                         &flag,
+                         sizeof(flag));
+    
+    AudioUnitSetProperty(audioUnit,
+                         kAudioOutputUnitProperty_EnableIO,
+                         kAudioUnitScope_Input,
+                         OUTPUT_BUS,
+                         &flag,
+                         sizeof(flag));
+    
     AURenderCallbackStruct recordCallback;
     recordCallback.inputProc = RecordCallback;
     recordCallback.inputProcRefCon = (__bridge void *)self;
@@ -159,9 +149,7 @@
                          INPUT_BUS,
                          &recordCallback,
                          sizeof(recordCallback));
-}
-
-- (void)initPlayCallback {
+    
     AURenderCallbackStruct playCallback;
     playCallback.inputProc = PlayCallback;
     playCallback.inputProcRefCon = (__bridge void *)self;
@@ -171,28 +159,15 @@
                          OUTPUT_BUS,
                          &playCallback,
                          sizeof(playCallback));
+    
+
+    OSStatus result = AudioUnitInitialize(audioUnit);
+    NSLog(@"result %d", result);
 }
 
-- (void)initAudioProperty {
-    UInt32 flag = 1;
-    
-    AudioUnitSetProperty(audioUnit,
-                         kAudioOutputUnitProperty_EnableIO,
-                         kAudioUnitScope_Input,
-                         INPUT_BUS,
-                         &flag,
-                         sizeof(flag));
-    
-    AudioUnitSetProperty(audioUnit,
-                         kAudioOutputUnitProperty_EnableIO,
-                         kAudioUnitScope_Input,
-                         OUTPUT_BUS,
-                         &flag,
-                         sizeof(flag));
-    
-}
 
-#pragma mark - callback function
+
+#pragma mark - callback
 
 static OSStatus RecordCallback(void *inRefCon,
                                AudioUnitRenderActionFlags *ioActionFlags,
@@ -219,7 +194,6 @@ static OSStatus PlayCallback(void *inRefCon,
     ViewController *vc = (__bridge ViewController *)inRefCon;
     NSLog(@"size2 = %d", ioData->mBuffers[0].mDataByteSize);
     memcpy(ioData->mBuffers[0].mData, vc->buffList->mBuffers[0].mData, ioData->mBuffers[0].mDataByteSize);
-    AudioUnitRender(vc->audioUnit, ioActionFlags, inTimeStamp, 1, inNumberFrames, vc->buffList);
     
     return noErr;
 }
@@ -248,9 +222,6 @@ static OSStatus PlayCallback(void *inRefCon,
 #pragma mark - private
 
 - (void)audio_release {
-    //    [[NSNotificationCenter defaultCenter] removeObserver:self];
-    //    AudioOutputUnitStop(audioUnit);
-    //    AudioComponentInstanceDispose(audioUnit);
     AudioUnitUninitialize(audioUnit);
     if (buffList != NULL) {
         free(buffList);
