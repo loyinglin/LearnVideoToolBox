@@ -18,8 +18,6 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 @implementation LYPlayer
 {
-    AudioStreamBasicDescription audioFileFormat;
-    
     AudioUnit audioUnit;
     AudioBufferList *buffList;
     
@@ -61,7 +59,6 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayback error:&error];
     
-    
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
     audioDesc.componentSubType = kAudioUnitSubType_RemoteIO;
@@ -80,13 +77,11 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                          INPUT_BUS,
                          &flag,
                          sizeof(flag));
-    
     buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
     buffList->mNumberBuffers = 1;
     buffList->mBuffers[0].mNumberChannels = 1;
     buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
-    
     
     //audio property
     flag = 1;
@@ -102,7 +97,6 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
         NSLog(@"AudioUnitSetProperty error with status:%d", status);
     }
     
-    
     // format
     AudioStreamBasicDescription outputFormat;
     memset(&outputFormat, 0, sizeof(outputFormat));
@@ -114,14 +108,8 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     outputFormat.mBytesPerFrame    = 2;
     outputFormat.mChannelsPerFrame = 1;
     outputFormat.mBitsPerChannel   = 16;
-    audioFileFormat = outputFormat;
-    
-    [self printAudioStreamBasicDescription:audioFileFormat];
+    [self printAudioStreamBasicDescription:outputFormat];
 
-    if (status) {
-        NSLog(@"AudioConverterNew eror with status:%d", status);
-    }
-    
     status = AudioUnitSetProperty(audioUnit,
                                   kAudioUnitProperty_StreamFormat,
                                   kAudioUnitScope_Input,
