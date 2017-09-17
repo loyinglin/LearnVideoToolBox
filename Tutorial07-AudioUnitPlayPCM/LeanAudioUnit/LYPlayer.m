@@ -1,6 +1,6 @@
 //
 //  LYPlayer.m
-//  LearnVideoToolBox
+//  LeanAudioUnit
 //
 //  Created by loyinglin on 2017/9/13.
 //  Copyright © 2017年 林伟池. All rights reserved.
@@ -70,13 +70,6 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     AudioComponentInstanceNew(inputComponent, &audioUnit);
     
     // buffer
-    UInt32 flag = 0;
-    AudioUnitSetProperty(audioUnit,
-                         kAudioUnitProperty_ShouldAllocateBuffer,
-                         kAudioUnitScope_Output,
-                         INPUT_BUS,
-                         &flag,
-                         sizeof(flag));
     buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
     buffList->mNumberBuffers = 1;
     buffList->mBuffers[0].mNumberChannels = 1;
@@ -84,7 +77,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
     
     //audio property
-    flag = 1;
+    UInt32 flag = 1;
     if (flag) {
         status = AudioUnitSetProperty(audioUnit,
                                       kAudioOutputUnitProperty_EnableIO,
@@ -161,6 +154,10 @@ static OSStatus PlayCallback(void *inRefCon,
 - (void)stop {
     AudioOutputUnitStop(audioUnit);
     if (buffList != NULL) {
+        if (buffList->mBuffers[0].mData) {
+            free(buffList->mBuffers[0].mData);
+            buffList->mBuffers[0].mData = NULL;
+        }
         free(buffList);
         buffList = NULL;
     }
