@@ -23,7 +23,8 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     AudioStreamPacketDescription *audioPacketFormat;
     
     SInt64 readedPacket; //参数类型
-    UInt64 packetNums;
+    UInt64 packetNums; // 总的packet数量
+    UInt64 packetNumsInBuffer; // buffer中最多的buffer数量
     
     AudioUnit audioUnit;
     AudioBufferList *buffList;

@@ -12,17 +12,14 @@
 
 #define INPUT_BUS 1
 #define OUTPUT_BUS 0
-
-@interface ViewController ()
-
-
-@end
+#define CONST_BUFFER_SIZE 2048*2*10
 
 @implementation ViewController
 {
     AudioUnit audioUnit;
     AudioBufferList *buffList;
-    
+    AudioBufferList *otherBuffList;
+    NSMutableData *recordData;
 }
 
 
@@ -39,39 +36,45 @@
 
 
 - (void)initRemoteIO {
-    NSError *error;
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&error];
-    [audioSession setPreferredSampleRate:44100 error:&error];
-    [audioSession setPreferredInputNumberOfChannels:1 error:&error];
-    [audioSession setPreferredIOBufferDuration:0.022 error:&error];
+    NSError *error = nil;
+    OSStatus status = noErr;
     
-    
-//    UInt32 flag = 0;
-//    AudioUnitSetProperty(audioUnit,
-//                         kAudioUnitProperty_ShouldAllocateBuffer,
-//                         kAudioUnitScope_Output,
-//                         INPUT_BUS,
-//                         &flag,
-//                         sizeof(flag));
-    
+    // audio session
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:&error];
+    if (error) {
+        NSLog(@"setCategory error:%@", error);
+    }
+    [[AVAudioSession sharedInstance] setPreferredIOBufferDuration:0.05 error:&error];
+    if (error) {
+        NSLog(@"setPreferredIOBufferDuration error:%@", error);
+    }
+    // buffer list
     buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
     buffList->mNumberBuffers = 1;
     buffList->mBuffers[0].mNumberChannels = 1;
-    buffList->mBuffers[0].mDataByteSize = 22048 * sizeof(short);
-    buffList->mBuffers[0].mData = malloc(sizeof(short) * 2048);
+    buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
+    buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
     
+    otherBuffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
+    otherBuffList->mNumberBuffers = 1;
+    otherBuffList->mBuffers[0].mNumberChannels = 1;
+    otherBuffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
+    otherBuffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
     
+    // audio unit new
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
     audioDesc.componentSubType = kAudioUnitSubType_RemoteIO;
     audioDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
     audioDesc.componentFlags = 0;
     audioDesc.componentFlagsMask = 0;
-    
     AudioComponent inputComponent = AudioComponentFindNext(NULL, &audioDesc);
-    AudioComponentInstanceNew(inputComponent, &audioUnit);
+    status = AudioComponentInstanceNew(inputComponent, &audioUnit);
+    if (status != noErr) {
+        NSLog(@"AudioUnitGetProperty error, ret: %d", status);
+    }
     
+    // set format
     AudioStreamBasicDescription audioFormat;
     audioFormat.mSampleRate = 44100;
     audioFormat.mFormatID = kAudioFormatLinearPCM;
@@ -81,65 +84,39 @@
     audioFormat.mBitsPerChannel = 16;
     audioFormat.mBytesPerPacket = 2;
     audioFormat.mBytesPerFrame = 2;
-    
-    UInt32 outDataSize;
-    Boolean outWritable;
-    AudioUnitGetPropertyInfo(audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, INPUT_BUS, &outDataSize, &outWritable);
-    NSLog(@"size:%d, able:%d", outDataSize, outWritable);
-    
-    AudioStreamBasicDescription outputFormat;
-    OSStatus status;
-    UInt32 outputSize = sizeof(outputFormat);
-    status =  AudioUnitGetProperty(audioUnit,
-                                   kAudioUnitProperty_StreamFormat,
-                                   kAudioUnitScope_Input,
-                                   OUTPUT_BUS,
-                                   &outputFormat,
-                                   &outputSize);
-    if (status != noErr) {
-        NSLog(@"AudioUnitGetProperty error, ret: %d", status);
-    }
-    
-    AudioUnitSetProperty(audioUnit,
+    status = AudioUnitSetProperty(audioUnit,
                          kAudioUnitProperty_StreamFormat,
                          kAudioUnitScope_Output,
                          INPUT_BUS,
                          &audioFormat,
                          sizeof(audioFormat));
-    AudioUnitSetProperty(audioUnit,
+    if (status != noErr) {
+        NSLog(@"AudioUnitGetProperty error, ret: %d", status);
+    }
+   status = AudioUnitSetProperty(audioUnit,
                          kAudioUnitProperty_StreamFormat,
                          kAudioUnitScope_Input,
                          OUTPUT_BUS,
                          &audioFormat,
                          sizeof(audioFormat));
-    
-    // after set
-    status =  AudioUnitGetProperty(audioUnit,
-                                   kAudioUnitProperty_StreamFormat,
-                                   kAudioUnitScope_Input,
-                                   OUTPUT_BUS,
-                                   &outputFormat,
-                                   &outputSize);
+
     if (status != noErr) {
         NSLog(@"AudioUnitGetProperty error, ret: %d", status);
     }
     
-    
+    // enable record
     UInt32 flag = 1;
-    AudioUnitSetProperty(audioUnit,
+    status = AudioUnitSetProperty(audioUnit,
                          kAudioOutputUnitProperty_EnableIO,
                          kAudioUnitScope_Input,
                          INPUT_BUS,
                          &flag,
                          sizeof(flag));
+    if (status != noErr) {
+        NSLog(@"AudioUnitGetProperty error, ret: %d", status);
+    }
     
-    AudioUnitSetProperty(audioUnit,
-                         kAudioOutputUnitProperty_EnableIO,
-                         kAudioUnitScope_Input,
-                         OUTPUT_BUS,
-                         &flag,
-                         sizeof(flag));
-    
+    // set callback
     AURenderCallbackStruct recordCallback;
     recordCallback.inputProc = RecordCallback;
     recordCallback.inputProcRefCon = (__bridge void *)self;
@@ -149,7 +126,6 @@
                          INPUT_BUS,
                          &recordCallback,
                          sizeof(recordCallback));
-    
     AURenderCallbackStruct playCallback;
     playCallback.inputProc = PlayCallback;
     playCallback.inputProcRefCon = (__bridge void *)self;
@@ -159,8 +135,6 @@
                          OUTPUT_BUS,
                          &playCallback,
                          sizeof(playCallback));
-    
-
     OSStatus result = AudioUnitInitialize(audioUnit);
     NSLog(@"result %d", result);
 }
@@ -207,7 +181,18 @@ static OSStatus PlayCallback(void *inRefCon,
 
 - (IBAction)stopRecorder:(id)sender {
     AudioOutputUnitStop(audioUnit);
-    [self audio_release];
+    AudioUnitUninitialize(audioUnit);
+    
+    if (buffList != NULL) {
+        if (buffList->mBuffers[0].mData) {
+            free(buffList->mBuffers[0].mData);
+            buffList->mBuffers[0].mData = NULL;
+        }
+        free(buffList);
+        buffList = NULL;
+    }
+    AudioComponentInstanceDispose(audioUnit);
+    
 }
 
 - (void)writePCMData:(Byte *)buffer size:(int)size {
@@ -219,26 +204,6 @@ static OSStatus PlayCallback(void *inRefCon,
     fwrite(buffer, size, 1, file);
 }
 
-#pragma mark - private
-
-- (void)audio_release {
-    AudioUnitUninitialize(audioUnit);
-    if (buffList != NULL) {
-        free(buffList);
-        buffList = NULL;
-    }
-}
-
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-    AudioOutputUnitStop(audioUnit);
-    AudioComponentInstanceDispose(audioUnit);
-    if (buffList != NULL) {
-        free(buffList);
-        buffList = NULL;
-    }
-    AudioUnitUninitialize(audioUnit);
-}
 
 
 
