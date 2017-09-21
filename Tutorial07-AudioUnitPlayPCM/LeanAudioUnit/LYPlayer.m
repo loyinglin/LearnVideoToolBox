@@ -96,10 +96,10 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     outputFormat.mSampleRate       = 44100;
     outputFormat.mFormatID         = kAudioFormatLinearPCM;
     outputFormat.mFormatFlags      = kLinearPCMFormatFlagIsSignedInteger;
-    outputFormat.mBytesPerPacket   = 2;
     outputFormat.mFramesPerPacket  = 1;
-    outputFormat.mBytesPerFrame    = 2;
     outputFormat.mChannelsPerFrame = 1;
+    outputFormat.mBytesPerFrame    = 2;
+    outputFormat.mBytesPerPacket   = 2;
     outputFormat.mBitsPerChannel   = 16;
     [self printAudioStreamBasicDescription:outputFormat];
 

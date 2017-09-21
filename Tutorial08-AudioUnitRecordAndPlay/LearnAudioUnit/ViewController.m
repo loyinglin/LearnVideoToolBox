@@ -18,8 +18,9 @@
 {
     AudioUnit audioUnit;
     AudioBufferList *buffList;
-    AudioBufferList *otherBuffList;
-    NSMutableData *recordData;
+    
+    NSInputStream *inputSteam;
+    Byte *buffer;
 }
 
 
@@ -36,6 +37,16 @@
 
 
 - (void)initRemoteIO {
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"test" withExtension:@"pcm"];
+    inputSteam = [NSInputStream inputStreamWithURL:url];
+    if (!inputSteam) {
+        NSLog(@"打开文件失败 %@", url);
+    }
+    else {
+        [inputSteam open];
+    }
+
+    
     NSError *error = nil;
     OSStatus status = noErr;
     
@@ -49,18 +60,20 @@
         NSLog(@"setPreferredIOBufferDuration error:%@", error);
     }
     // buffer list
-    buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
-    buffList->mNumberBuffers = 1;
+    uint32_t numberBuffers = 2;
+    buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList) + (numberBuffers - 1) * sizeof(AudioBuffer));
+    buffList->mNumberBuffers = numberBuffers;
     buffList->mBuffers[0].mNumberChannels = 1;
     buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
+                                   
+    for (int i = 0; i < numberBuffers; ++i) {
+        buffList->mBuffers[i].mNumberChannels = 1;
+        buffList->mBuffers[i].mDataByteSize = CONST_BUFFER_SIZE;
+        buffList->mBuffers[i].mData = malloc(CONST_BUFFER_SIZE);
+    }
     
-    otherBuffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
-    otherBuffList->mNumberBuffers = 1;
-    otherBuffList->mBuffers[0].mNumberChannels = 1;
-    otherBuffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
-    otherBuffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
-    
+    buffer = malloc(CONST_BUFFER_SIZE);
     // audio unit new
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
@@ -75,30 +88,35 @@
     }
     
     // set format
-    AudioStreamBasicDescription audioFormat;
-    audioFormat.mSampleRate = 44100;
-    audioFormat.mFormatID = kAudioFormatLinearPCM;
-    audioFormat.mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked;
-    audioFormat.mFramesPerPacket = 1;
-    audioFormat.mChannelsPerFrame = 1;
-    audioFormat.mBitsPerChannel = 16;
-    audioFormat.mBytesPerPacket = 2;
-    audioFormat.mBytesPerFrame = 2;
+    AudioStreamBasicDescription inputFormat;
+    inputFormat.mSampleRate = 44100;
+    inputFormat.mFormatID = kAudioFormatLinearPCM;
+    inputFormat.mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsNonInterleaved;
+    inputFormat.mFramesPerPacket = 1;
+    inputFormat.mChannelsPerFrame = 1;
+    inputFormat.mBytesPerPacket = 2;
+    inputFormat.mBytesPerFrame = 2;
+    inputFormat.mBitsPerChannel = 16;
     status = AudioUnitSetProperty(audioUnit,
                          kAudioUnitProperty_StreamFormat,
                          kAudioUnitScope_Output,
                          INPUT_BUS,
-                         &audioFormat,
-                         sizeof(audioFormat));
+                         &inputFormat,
+                         sizeof(inputFormat));
     if (status != noErr) {
         NSLog(@"AudioUnitGetProperty error, ret: %d", status);
     }
+    
+    
+    AudioStreamBasicDescription outputFormat = inputFormat;
+    outputFormat.mChannelsPerFrame = 2;
+    
    status = AudioUnitSetProperty(audioUnit,
                          kAudioUnitProperty_StreamFormat,
                          kAudioUnitScope_Input,
                          OUTPUT_BUS,
-                         &audioFormat,
-                         sizeof(audioFormat));
+                         &outputFormat,
+                         sizeof(outputFormat));
 
     if (status != noErr) {
         NSLog(@"AudioUnitGetProperty error, ret: %d", status);
@@ -115,6 +133,15 @@
     if (status != noErr) {
         NSLog(@"AudioUnitGetProperty error, ret: %d", status);
     }
+    
+    
+//    UInt32 bufferFlag = 0;
+//    AudioUnitSetProperty(audioUnit,
+//                         kAudioUnitProperty_ShouldAllocateBuffer,
+//                         kAudioUnitScope_Output,
+//                         INPUT_BUS,
+//                         &bufferFlag,
+//                         sizeof(bufferFlag));
     
     // set callback
     AURenderCallbackStruct recordCallback;
@@ -135,6 +162,7 @@
                          OUTPUT_BUS,
                          &playCallback,
                          sizeof(playCallback));
+    
     OSStatus result = AudioUnitInitialize(audioUnit);
     NSLog(@"result %d", result);
 }
@@ -151,7 +179,11 @@ static OSStatus RecordCallback(void *inRefCon,
                                AudioBufferList *ioData)
 {
     ViewController *vc = (__bridge ViewController *)inRefCon;
-    AudioUnitRender(vc->audioUnit, ioActionFlags, inTimeStamp, inBusNumber, inNumberFrames, vc->buffList);
+    vc->buffList->mNumberBuffers = 1;
+    OSStatus status = AudioUnitRender(vc->audioUnit, ioActionFlags, inTimeStamp, inBusNumber, inNumberFrames, vc->buffList);
+    if (status != noErr) {
+        NSLog(@"AudioUnitRender error:%d", status);
+    }
     
     NSLog(@"size1 = %d", vc->buffList->mBuffers[0].mDataByteSize);
     [vc writePCMData:vc->buffList->mBuffers[0].mData size:vc->buffList->mBuffers[0].mDataByteSize];
@@ -167,7 +199,16 @@ static OSStatus PlayCallback(void *inRefCon,
                              AudioBufferList *ioData) {
     ViewController *vc = (__bridge ViewController *)inRefCon;
     NSLog(@"size2 = %d", ioData->mBuffers[0].mDataByteSize);
-    memcpy(ioData->mBuffers[0].mData, vc->buffList->mBuffers[0].mData, ioData->mBuffers[0].mDataByteSize);
+//    memcpy(ioData->mBuffers[0].mData, vc->buffList->mBuffers[0].mData, ioData->mBuffers[0].mDataByteSize);
+//    ioData->mBuffers[0].mDataByteSize = 0;
+    NSInteger bytes = CONST_BUFFER_SIZE < ioData->mBuffers[1].mDataByteSize * 2 ? CONST_BUFFER_SIZE : ioData->mBuffers[1].mDataByteSize * 2; // 
+    bytes = [vc->inputSteam read:vc->buffer maxLength:bytes];
+    
+    for (int i = 0; i < bytes; ++i) {
+        ((Byte*)ioData->mBuffers[1].mData)[i/2] = vc->buffer[i];
+    }
+    ioData->mBuffers[1].mDataByteSize = (UInt32)bytes / 2;
+    
     
     return noErr;
 }
@@ -191,13 +232,15 @@ static OSStatus PlayCallback(void *inRefCon,
         free(buffList);
         buffList = NULL;
     }
+    
+    [inputSteam close];
     AudioComponentInstanceDispose(audioUnit);
     
 }
 
 - (void)writePCMData:(Byte *)buffer size:(int)size {
     static FILE *file = NULL;
-    NSString *path = [NSTemporaryDirectory() stringByAppendingString:@"/test.pcm"];
+    NSString *path = [NSTemporaryDirectory() stringByAppendingString:@"/record.pcm"];
     if (!file) {
         file = fopen(path.UTF8String, "w");
     }
