@@ -14,6 +14,9 @@
 #define OUTPUT_BUS 0
 #define CONST_BUFFER_SIZE 2048*2*10
 
+#define startTag 10
+#define stopTag 20
+
 @implementation ViewController
 {
     AudioUnit audioUnit;
@@ -30,13 +33,41 @@
     
 }
 
+- (IBAction)start:(UIView *)sender {
+    sender.hidden = YES;
+    [[self.view viewWithTag:stopTag] setHidden:NO];
+    
+    [ self initAudioUnit];
+    AudioOutputUnitStart(audioUnit);
+}
+
+- (IBAction)stop:(UIView *)sender {
+    sender.hidden = YES;
+    [[self.view viewWithTag:startTag] setHidden:NO];
+    
+    AudioOutputUnitStop(audioUnit);
+    AudioUnitUninitialize(audioUnit);
+    
+    if (buffList != NULL) {
+        if (buffList->mBuffers[0].mData) {
+            free(buffList->mBuffers[0].mData);
+            buffList->mBuffers[0].mData = NULL;
+        }
+        free(buffList);
+        buffList = NULL;
+    }
+    
+    [inputSteam close];
+    AudioComponentInstanceDispose(audioUnit);
+}
+
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
 }
 
 
-- (void)initRemoteIO {
+- (void)initAudioUnit {
     NSURL *url = [[NSBundle mainBundle] URLForResource:@"test" withExtension:@"pcm"];
     inputSteam = [NSInputStream inputStreamWithURL:url];
     if (!inputSteam) {
@@ -60,14 +91,14 @@
         NSLog(@"setPreferredIOBufferDuration error:%@", error);
     }
     // buffer list
-    uint32_t numberBuffers = 2;
+    uint32_t numberBuffers = 1;
     buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList) + (numberBuffers - 1) * sizeof(AudioBuffer));
     buffList->mNumberBuffers = numberBuffers;
     buffList->mBuffers[0].mNumberChannels = 1;
     buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
                                    
-    for (int i = 0; i < numberBuffers; ++i) {
+    for (int i =1; i < numberBuffers; ++i) {
         buffList->mBuffers[i].mNumberChannels = 1;
         buffList->mBuffers[i].mDataByteSize = CONST_BUFFER_SIZE;
         buffList->mBuffers[i].mData = malloc(CONST_BUFFER_SIZE);
@@ -135,14 +166,6 @@
     }
     
     
-//    UInt32 bufferFlag = 0;
-//    AudioUnitSetProperty(audioUnit,
-//                         kAudioUnitProperty_ShouldAllocateBuffer,
-//                         kAudioUnitScope_Output,
-//                         INPUT_BUS,
-//                         &bufferFlag,
-//                         sizeof(bufferFlag));
-    
     // set callback
     AURenderCallbackStruct recordCallback;
     recordCallback.inputProc = RecordCallback;
@@ -198,10 +221,10 @@ static OSStatus PlayCallback(void *inRefCon,
                              UInt32 inNumberFrames,
                              AudioBufferList *ioData) {
     ViewController *vc = (__bridge ViewController *)inRefCon;
-    NSLog(@"size2 = %d", ioData->mBuffers[0].mDataByteSize);
-//    memcpy(ioData->mBuffers[0].mData, vc->buffList->mBuffers[0].mData, ioData->mBuffers[0].mDataByteSize);
-//    ioData->mBuffers[0].mDataByteSize = 0;
-    NSInteger bytes = CONST_BUFFER_SIZE < ioData->mBuffers[1].mDataByteSize * 2 ? CONST_BUFFER_SIZE : ioData->mBuffers[1].mDataByteSize * 2; // 
+    memcpy(ioData->mBuffers[0].mData, vc->buffList->mBuffers[0].mData, vc->buffList->mBuffers[0].mDataByteSize);
+    ioData->mBuffers[0].mDataByteSize = vc->buffList->mBuffers[0].mDataByteSize;
+    
+    NSInteger bytes = CONST_BUFFER_SIZE < ioData->mBuffers[1].mDataByteSize * 2 ? CONST_BUFFER_SIZE : ioData->mBuffers[1].mDataByteSize * 2; //
     bytes = [vc->inputSteam read:vc->buffer maxLength:bytes];
     
     for (int i = 0; i < bytes; ++i) {
@@ -209,33 +232,14 @@ static OSStatus PlayCallback(void *inRefCon,
     }
     ioData->mBuffers[1].mDataByteSize = (UInt32)bytes / 2;
     
-    
-    return noErr;
-}
-
-#pragma mark - public methods
-
-- (IBAction)startRecorder:(id)sender {
-    [ self initRemoteIO];
-    AudioOutputUnitStart(audioUnit);
-}
-
-- (IBAction)stopRecorder:(id)sender {
-    AudioOutputUnitStop(audioUnit);
-    AudioUnitUninitialize(audioUnit);
-    
-    if (buffList != NULL) {
-        if (buffList->mBuffers[0].mData) {
-            free(buffList->mBuffers[0].mData);
-            buffList->mBuffers[0].mData = NULL;
-        }
-        free(buffList);
-        buffList = NULL;
+    if (ioData->mBuffers[1].mDataByteSize < ioData->mBuffers[0].mDataByteSize) {
+        ioData->mBuffers[0].mDataByteSize = ioData->mBuffers[1].mDataByteSize;
     }
     
-    [inputSteam close];
-    AudioComponentInstanceDispose(audioUnit);
     
+    NSLog(@"size2 = %d", ioData->mBuffers[0].mDataByteSize);
+    
+    return noErr;
 }
 
 - (void)writePCMData:(Byte *)buffer size:(int)size {
