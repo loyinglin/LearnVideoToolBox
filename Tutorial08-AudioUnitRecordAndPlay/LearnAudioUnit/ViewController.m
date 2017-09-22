@@ -165,26 +165,43 @@
         NSLog(@"AudioUnitGetProperty error, ret: %d", status);
     }
     
+//    flag = 1;
+//    status = AudioUnitSetProperty(audioUnit,
+//                                  kAudioUnitProperty_ShouldAllocateBuffer,
+//                                  kAudioUnitScope_Global,
+//                                  INPUT_BUS,
+//                                  &flag,
+//                                  sizeof(flag));
+//    if (status != noErr) {
+//        NSLog(@"AudioUnitGetProperty error, ret: %d", status);
+//    }
     
     // set callback
     AURenderCallbackStruct recordCallback;
     recordCallback.inputProc = RecordCallback;
     recordCallback.inputProcRefCon = (__bridge void *)self;
-    AudioUnitSetProperty(audioUnit,
+    status = AudioUnitSetProperty(audioUnit,
                          kAudioOutputUnitProperty_SetInputCallback,
                          kAudioUnitScope_Output,
                          INPUT_BUS,
                          &recordCallback,
                          sizeof(recordCallback));
+    if (status != noErr) {
+        NSLog(@"AudioUnitGetProperty error, ret: %d", status);
+    }
+    
     AURenderCallbackStruct playCallback;
     playCallback.inputProc = PlayCallback;
     playCallback.inputProcRefCon = (__bridge void *)self;
-    AudioUnitSetProperty(audioUnit,
+    status = AudioUnitSetProperty(audioUnit,
                          kAudioUnitProperty_SetRenderCallback,
                          kAudioUnitScope_Input,
                          OUTPUT_BUS,
                          &playCallback,
                          sizeof(playCallback));
+    if (status != noErr) {
+        NSLog(@"AudioUnitGetProperty error, ret: %d", status);
+    }
     
     OSStatus result = AudioUnitInitialize(audioUnit);
     NSLog(@"result %d", result);
