@@ -37,7 +37,7 @@
     [self.view addSubview:self.mCurrentTimeLabel];
     
     self.mDecodeButton = [[UIButton alloc] initWithFrame:CGRectMake(CGRectGetMaxX(self.mLabel.frame) + 20, 100, 100, 100)];
-    [self.mDecodeButton setTitle:@"decode" forState:UIControlStateNormal];
+    [self.mDecodeButton setTitle:@"play" forState:UIControlStateNormal];
     [self.mDecodeButton setTitleColor:[UIColor blueColor] forState:UIControlStateNormal];
     [self.mDecodeButton sizeToFit];
     [self.view addSubview:self.mDecodeButton];

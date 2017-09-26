@@ -12,8 +12,9 @@
 
 const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
-#define INPUT_BUS 1
-#define OUTPUT_BUS 0
+#define INPUT_BUS (1)
+#define OUTPUT_BUS (0)
+#define NO_MORE_DATA (-12306)
 
 @implementation LYPlayer
 {
@@ -21,7 +22,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     AudioStreamBasicDescription audioFileFormat;
     AudioStreamPacketDescription *audioPacketFormat;
     
-    SInt64 readedPacket; //参数类型
+    SInt64 readedPacket; // 已读的packet数量
     UInt64 packetNums; // 总的packet数量
     UInt64 packetNumsInBuffer; // buffer中最多的buffer数量
     
@@ -41,7 +42,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 }
 
 - (void)customAudioConfig {
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"aac"];
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"mp3"];
     OSStatus status = AudioFileOpenURL((__bridge CFURLRef)url, kAudioFileReadPermission, 0, &audioFileID);
     if (status) {
         NSLog(@"打开文件失败 %@", url);
@@ -58,7 +59,14 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                                   &packetNums);
     readedPacket = 0;
     
-    audioPacketFormat = malloc(sizeof(AudioStreamPacketDescription) * packetNums);
+    uint32_t sizePerPacket = audioFileFormat.mFramesPerPacket;
+    if (sizePerPacket == 0) {
+        size = sizeof(sizePerPacket);
+        status = AudioFileGetProperty(audioFileID, kAudioFilePropertyMaximumPacketSize, &size, &sizePerPacket);
+        NSAssert(status ==noErr && sizePerPacket != 0, @"AudioFileGetProperty error or sizePerPacket = 0");
+    }
+    
+    audioPacketFormat = malloc(sizeof(AudioStreamPacketDescription) * (CONST_BUFFER_SIZE / sizePerPacket + 1));
     NSAssert(status == noErr, ([NSString stringWithFormat:@"error status %d", status]) );
     
     audioConverter = NULL;
@@ -81,11 +89,10 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 - (void)initPlayer {
     NSError *error = nil;
     OSStatus status = noErr;
+    UInt32 flag = 1;
     
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayback error:&error];
-    
-    
     
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
@@ -98,26 +105,15 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     AudioComponentInstanceNew(inputComponent, &audioUnit);
     
     // BUFFER
-    UInt32 flag = 0;
-    AudioUnitSetProperty(audioUnit,
-                         kAudioUnitProperty_ShouldAllocateBuffer,
-                         kAudioUnitScope_Output,
-                         INPUT_BUS,
-                         &flag,
-                         sizeof(flag));
-    
     buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
     buffList->mNumberBuffers = 1;
     buffList->mBuffers[0].mNumberChannels = 1;
     buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
-    
-    
     convertBuffer = malloc(CONST_BUFFER_SIZE);
     
     
     //initAudioProperty
-    
     flag = 1;
     if (flag) {
         status = AudioUnitSetProperty(audioUnit,
@@ -126,9 +122,9 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                                       OUTPUT_BUS,
                                       &flag,
                                       sizeof(flag));
-    }
-    if (status) {
-        NSLog(@"AudioUnitSetProperty error with status:%d", status);
+        if (status) {
+            NSLog(@"AudioUnitSetProperty error with status:%d", status);
+        }
     }
     
     
@@ -162,7 +158,18 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     }
     
     
-    [self initPlayCallback];
+    AURenderCallbackStruct playCallback;
+    playCallback.inputProc = PlayCallback;
+    playCallback.inputProcRefCon = (__bridge void *)self;
+    status = AudioUnitSetProperty(audioUnit,
+                                  kAudioUnitProperty_SetRenderCallback,
+                                  kAudioUnitScope_Input,
+                                  OUTPUT_BUS,
+                                  &playCallback,
+                                  sizeof(playCallback));
+    if (status) {
+        NSLog(@"AudioUnitSetProperty eror with status:%d", status);
+    }
     
     
     OSStatus result = AudioUnitInitialize(audioUnit);
@@ -192,22 +199,21 @@ OSStatus lyInInputDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberD
         return noErr;
     }
     else {
-        return -12306; // NoMoreData
+        return NO_MORE_DATA;
     }
     
 }
 
-static OSStatus PlayCallback(void *inRefCon,
-                             AudioUnitRenderActionFlags *ioActionFlags,
-                             const AudioTimeStamp *inTimeStamp,
-                             UInt32 inBusNumber,
-                             UInt32 inNumberFrames,
-                             AudioBufferList *ioData) {
+OSStatus PlayCallback(void *inRefCon,
+                      AudioUnitRenderActionFlags *ioActionFlags,
+                      const AudioTimeStamp *inTimeStamp,
+                      UInt32 inBusNumber,
+                      UInt32 inNumberFrames,
+                      AudioBufferList *ioData) {
     LYPlayer *player = (__bridge LYPlayer *)inRefCon;
     
     player->buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     OSStatus status = AudioConverterFillComplexBuffer(player->audioConverter, lyInInputDataProc, inRefCon, &inNumberFrames, player->buffList, NULL);
-    
     if (status) {
         NSLog(@"转换格式失败 %d", status);
     }
@@ -220,7 +226,7 @@ static OSStatus PlayCallback(void *inRefCon,
     
     if (player->buffList->mBuffers[0].mDataByteSize <= 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [player stop];
+            [player onPlayEnd];
         });
     }
     return noErr;
@@ -236,39 +242,17 @@ static OSStatus PlayCallback(void *inRefCon,
     return _pcmFile;
 }
 
-
-- (void)initPlayCallback {
-    AURenderCallbackStruct playCallback;
-    playCallback.inputProc = PlayCallback;
-    playCallback.inputProcRefCon = (__bridge void *)self;
-    AudioUnitSetProperty(audioUnit,
-                         kAudioUnitProperty_SetRenderCallback,
-                         kAudioUnitScope_Input,
-                         OUTPUT_BUS,
-                         &playCallback,
-                         sizeof(playCallback));
-}
-
-
-- (void)stop {
-    AudioOutputUnitStop(audioUnit);
-    if (buffList != NULL) {
-        free(buffList);
-        buffList = NULL;
-    }
-    
-    if (self.delegate && [self.delegate respondsToSelector:@selector(onPlayToEnd:)]) {
-        __strong typeof (LYPlayer) *player = self;
-        [self.delegate onPlayToEnd:player];
-    }
-}
-
-- (void)dealloc {
+- (void)onPlayEnd {
     AudioOutputUnitStop(audioUnit);
     AudioUnitUninitialize(audioUnit);
     AudioComponentInstanceDispose(audioUnit);
     
     if (buffList != NULL) {
+        if (buffList->mBuffers[0].mData) {
+            free(buffList->mBuffers[0].mData);
+            buffList->mBuffers[0].mData = NULL;
+        }
+        
         free(buffList);
         buffList = NULL;
     }
@@ -277,6 +261,11 @@ static OSStatus PlayCallback(void *inRefCon,
         convertBuffer = NULL;
     }
     AudioConverterDispose(audioConverter);
+    
+    if (self.delegate && [self.delegate respondsToSelector:@selector(onPlayToEnd:)]) {
+        __strong typeof (LYPlayer) *player = self;
+        [self.delegate onPlayToEnd:player];
+    }
 }
 
 
