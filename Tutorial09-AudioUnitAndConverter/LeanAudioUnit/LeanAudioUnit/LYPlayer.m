@@ -42,7 +42,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 }
 
 - (void)customAudioConfig {
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"mp3"];
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"m4a"];
     OSStatus status = AudioFileOpenURL((__bridge CFURLRef)url, kAudioFileReadPermission, 0, &audioFileID);
     if (status) {
         NSLog(@"打开文件失败 %@", url);
@@ -52,17 +52,18 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     status = AudioFileGetProperty(audioFileID, kAudioFilePropertyDataFormat, &size, &audioFileFormat); // 读取文件格式
     NSAssert(status == noErr, ([NSString stringWithFormat:@"error status %d", status]) );
     
+    
     size = sizeof(packetNums);
     status = AudioFileGetProperty(audioFileID,
                                   kAudioFilePropertyAudioDataPacketCount,
                                   &size,
-                                  &packetNums);
+                                  &packetNums); // 读取文件packets总数
     readedPacket = 0;
     
     uint32_t sizePerPacket = audioFileFormat.mFramesPerPacket;
     if (sizePerPacket == 0) {
         size = sizeof(sizePerPacket);
-        status = AudioFileGetProperty(audioFileID, kAudioFilePropertyMaximumPacketSize, &size, &sizePerPacket);
+        status = AudioFileGetProperty(audioFileID, kAudioFilePropertyMaximumPacketSize, &size, &sizePerPacket); // 读取单个packet的最大数量
         NSAssert(status ==noErr && sizePerPacket != 0, @"AudioFileGetProperty error or sizePerPacket = 0");
     }
     
@@ -74,7 +75,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 
 - (void)play {
-    [self initPlayer];
+    [self initPlayer]; // 初始化
     AudioOutputUnitStart(audioUnit);
 }
 
@@ -92,7 +93,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     UInt32 flag = 1;
     
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-    [audioSession setCategory:AVAudioSessionCategoryPlayback error:&error];
+    [audioSession setCategory:AVAudioSessionCategoryPlayback error:&error]; // 只有播放
     
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
@@ -183,7 +184,7 @@ OSStatus lyInInputDataProc(AudioConverterRef inAudioConverter, UInt32 *ioNumberD
     UInt32 byteSize = CONST_BUFFER_SIZE;
     OSStatus status = AudioFileReadPacketData(player->audioFileID, NO, &byteSize, player->audioPacketFormat, player->readedPacket, ioNumberDataPackets, player->convertBuffer);
     
-    if (outDataPacketDescription) {
+    if (outDataPacketDescription) { // 这里要设置好packetFormat，否则会转码失败
         *outDataPacketDescription = player->audioPacketFormat;
     }
     
