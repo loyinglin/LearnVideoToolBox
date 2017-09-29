@@ -36,13 +36,26 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 - (instancetype)init {
     self = [super init];
-    [self customAudioConfig];
     
     return self;
 }
 
-- (void)customAudioConfig {
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"m4a"];
+- (void)play {
+    [self initPlayer]; // 初始化
+    AudioOutputUnitStart(audioUnit);
+}
+
+
+- (double)getCurrentTime {
+    Float64 timeInterval = (readedPacket * 1.0) / packetNums;
+    return timeInterval;
+}
+
+
+
+- (void)initPlayer {
+    
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"mp3"];
     OSStatus status = AudioFileOpenURL((__bridge CFURLRef)url, kAudioFileReadPermission, 0, &audioFileID);
     if (status) {
         NSLog(@"打开文件失败 %@", url);
@@ -71,25 +84,9 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     NSAssert(status == noErr, ([NSString stringWithFormat:@"error status %d", status]) );
     
     audioConverter = NULL;
-}
-
-
-- (void)play {
-    [self initPlayer]; // 初始化
-    AudioOutputUnitStart(audioUnit);
-}
-
-
-- (double)getCurrentTime {
-    Float64 timeInterval = (readedPacket * 1.0) / packetNums;
-    return timeInterval;
-}
-
-
-
-- (void)initPlayer {
+    
+    
     NSError *error = nil;
-    OSStatus status = noErr;
     UInt32 flag = 1;
     
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
