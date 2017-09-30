@@ -168,7 +168,7 @@
 //    flag = 1;
 //    status = AudioUnitSetProperty(audioUnit,
 //                                  kAudioUnitProperty_ShouldAllocateBuffer,
-//                                  kAudioUnitScope_Global,
+//                                  kAudioUnitScope_Output,
 //                                  INPUT_BUS,
 //                                  &flag,
 //                                  sizeof(flag));
