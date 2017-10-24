@@ -20,15 +20,13 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 {
     ExtAudioFileRef exAudioFile;
     AudioStreamBasicDescription audioFileFormat;
-    AudioStreamPacketDescription *audioPacketFormat;
+    AudioStreamBasicDescription outputFormat;
     
     SInt64 readedFrame; // 已读的frame数量
     UInt64 totalFrame; // 总的Frame数量
-    UInt64 packetNumsInBuffer; // buffer中最多的buffer数量
     
     AudioUnit audioUnit;
     AudioBufferList *buffList;
-    Byte *convertBuffer;
     
     AudioConverterRef audioConverter;
 }
@@ -55,29 +53,13 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 - (void)initPlayer {
     
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"mp3"];
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"aac"];
     OSStatus status = ExtAudioFileOpenURL((__bridge CFURLRef)url, &exAudioFile);
-    if (status) {
-        NSLog(@"打开文件失败 %@", url);
-    }
+    NSAssert(!status, @"打开文件失败");
     
     uint32_t size = sizeof(AudioStreamBasicDescription);
     status = ExtAudioFileGetProperty(exAudioFile, kExtAudioFileProperty_FileDataFormat, &size, &audioFileFormat); // 读取文件格式
-    NSAssert(status == noErr, ([NSString stringWithFormat:@"error status %d", status]) );
-    
-    
-    uint32_t sizePerPacket = audioFileFormat.mFramesPerPacket;
-    if (sizePerPacket == 0) {
-        size = sizeof(sizePerPacket);
-        status = ExtAudioFileGetProperty(exAudioFile, kExtAudioFileProperty_FileMaxPacketSize, &size, &sizePerPacket); // 读取单个packet的最大数量
-        NSAssert(status == noErr && sizePerPacket != 0, @"AudioFileGetProperty error or sizePerPacket = 0");
-    }
-    
-    audioPacketFormat = malloc(sizeof(AudioStreamPacketDescription) * (CONST_BUFFER_SIZE / sizePerPacket + 1));
-    NSAssert(status == noErr, ([NSString stringWithFormat:@"error status %d", status]) );
-    
-    audioConverter = NULL;
-    
+    NSAssert1(status == noErr, @"ExtAudioFileGetProperty error status %d", status);
     
     NSError *error = nil;
     UInt32 flag = 1;
@@ -101,7 +83,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     buffList->mBuffers[0].mNumberChannels = 1;
     buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
-    convertBuffer = malloc(CONST_BUFFER_SIZE);
+    
     
     
     //initAudioProperty
@@ -113,14 +95,11 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                                       OUTPUT_BUS,
                                       &flag,
                                       sizeof(flag));
-        if (status) {
-            NSLog(@"AudioUnitSetProperty error with status:%d", status);
-        }
+        NSAssert1(!status, @"AudioUnitSetProperty eror with status:%d", status);
     }
     
     
     //initFormat
-    AudioStreamBasicDescription outputFormat;
     memset(&outputFormat, 0, sizeof(outputFormat));
     outputFormat.mSampleRate       = 44100;
     outputFormat.mFormatID         = kAudioFormatLinearPCM;
@@ -136,13 +115,10 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     NSLog(@"output format:");
     [self printAudioStreamBasicDescription:outputFormat];
     status = ExtAudioFileSetProperty(exAudioFile, kExtAudioFileProperty_ClientDataFormat, size, &outputFormat);
+    NSAssert1(!status, @"ExtAudioFileSetProperty eror with status:%d", status);
+
     
-    if (status) {
-        NSLog(@"AudioConverterNew eror with status:%d", status);
-    }
-    
-    
-        // 初始化还不能太前
+    // 初始化不能太前，如果未设置好输入输出格式，获取的总frame数不准确
     size = sizeof(totalFrame);
     status = ExtAudioFileGetProperty(exAudioFile,
                                      kExtAudioFileProperty_FileLengthFrames,
@@ -157,10 +133,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                                   OUTPUT_BUS,
                                   &outputFormat,
                                   sizeof(outputFormat));
-    if (status) {
-        NSLog(@"AudioUnitSetProperty eror with status:%d", status);
-    }
-    
+    NSAssert1(!status, @"AudioUnitSetProperty eror with status:%d", status);
     
     AURenderCallbackStruct playCallback;
     playCallback.inputProc = PlayCallback;
@@ -171,13 +144,10 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                                   OUTPUT_BUS,
                                   &playCallback,
                                   sizeof(playCallback));
-    if (status) {
-        NSLog(@"AudioUnitSetProperty eror with status:%d", status);
-    }
+    NSAssert(!status, @"AudioUnitSetProperty error");
     
-    
-    OSStatus result = AudioUnitInitialize(audioUnit);
-    NSLog(@"result %d", result);
+    status = AudioUnitInitialize(audioUnit);
+    NSAssert(!status, @"AudioUnitInitialize error");
 }
 
 OSStatus PlayCallback(void *inRefCon,
@@ -191,21 +161,14 @@ OSStatus PlayCallback(void *inRefCon,
     player->buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     OSStatus status = ExtAudioFileRead(player->exAudioFile, &inNumberFrames, player->buffList);
     
-//    AudioConverterFillComplexBuffer(player->audioConverter, lyInInputDataProc, inRefCon, &inNumberFrames, player->buffList, NULL);
-    if (status) {
-        NSLog(@"转换格式失败 %d", status);
-    }
-    
-    if (!inNumberFrames) {
-        // This is our termination condition.
-        NSLog(@"file to end");
-    }
+    if (status) NSLog(@"转换格式失败");
+    if (!inNumberFrames) NSLog(@"播放结束");
     
     NSLog(@"out size: %d", player->buffList->mBuffers[0].mDataByteSize);
     memcpy(ioData->mBuffers[0].mData, player->buffList->mBuffers[0].mData, player->buffList->mBuffers[0].mDataByteSize);
     ioData->mBuffers[0].mDataByteSize = player->buffList->mBuffers[0].mDataByteSize;
     
-    player->readedFrame += player->buffList->mBuffers[0].mDataByteSize / 2; //Bytes per Frame = 2，所以是每2bytes一帧
+    player->readedFrame += player->buffList->mBuffers[0].mDataByteSize / player->outputFormat.mBytesPerFrame; //Bytes per Frame = 2，所以是每2bytes一帧
     
     fwrite(player->buffList->mBuffers[0].mData, player->buffList->mBuffers[0].mDataByteSize, 1, [player pcmFile]);
     
@@ -241,10 +204,7 @@ OSStatus PlayCallback(void *inRefCon,
         free(buffList);
         buffList = NULL;
     }
-    if (convertBuffer != NULL) {
-        free(convertBuffer);
-        convertBuffer = NULL;
-    }
+    
     AudioConverterDispose(audioConverter);
     
     if (self.delegate && [self.delegate respondsToSelector:@selector(onPlayToEnd:)]) {
