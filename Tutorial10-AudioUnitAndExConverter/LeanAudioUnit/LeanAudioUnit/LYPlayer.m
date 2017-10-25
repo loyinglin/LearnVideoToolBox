@@ -12,9 +12,7 @@
 
 const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
-#define INPUT_BUS (1)
 #define OUTPUT_BUS (0)
-#define NO_MORE_DATA (-12306)
 
 @implementation LYPlayer
 {
@@ -49,24 +47,8 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     return timeInterval;
 }
 
-
-
-- (void)initPlayer {
-    
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"aac"];
-    OSStatus status = ExtAudioFileOpenURL((__bridge CFURLRef)url, &exAudioFile);
-    NSAssert(!status, @"打开文件失败");
-    
-    uint32_t size = sizeof(AudioStreamBasicDescription);
-    status = ExtAudioFileGetProperty(exAudioFile, kExtAudioFileProperty_FileDataFormat, &size, &audioFileFormat); // 读取文件格式
-    NSAssert1(status == noErr, @"ExtAudioFileGetProperty error status %d", status);
-    
-    NSError *error = nil;
-    UInt32 flag = 1;
-    
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-    [audioSession setCategory:AVAudioSessionCategoryPlayback error:&error]; // 只有播放
-    
+- (void)setupAudioUnit {
+    OSStatus status = noErr;
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
     audioDesc.componentSubType = kAudioUnitSubType_RemoteIO;
@@ -75,19 +57,11 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     audioDesc.componentFlagsMask = 0;
     
     AudioComponent inputComponent = AudioComponentFindNext(NULL, &audioDesc);
-    AudioComponentInstanceNew(inputComponent, &audioUnit);
-    
-    // BUFFER
-    buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
-    buffList->mNumberBuffers = 1;
-    buffList->mBuffers[0].mNumberChannels = 1;
-    buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
-    buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
-    
-    
+    status = AudioComponentInstanceNew(inputComponent, &audioUnit);
+    NSAssert(!status, @"AudioComponentInstanceNew error");
     
     //initAudioProperty
-    flag = 1;
+    UInt32 flag = 1;
     if (flag) {
         status = AudioUnitSetProperty(audioUnit,
                                       kAudioOutputUnitProperty_EnableIO,
@@ -98,34 +72,6 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
         NSAssert1(!status, @"AudioUnitSetProperty eror with status:%d", status);
     }
     
-    
-    //initFormat
-    memset(&outputFormat, 0, sizeof(outputFormat));
-    outputFormat.mSampleRate       = 44100;
-    outputFormat.mFormatID         = kAudioFormatLinearPCM;
-    outputFormat.mFormatFlags      = kLinearPCMFormatFlagIsSignedInteger;
-    outputFormat.mBytesPerPacket   = 2;
-    outputFormat.mFramesPerPacket  = 1;
-    outputFormat.mBytesPerFrame    = 2;
-    outputFormat.mChannelsPerFrame = 1;
-    outputFormat.mBitsPerChannel   = 16;
-    
-    NSLog(@"input format:");
-    [self printAudioStreamBasicDescription:audioFileFormat];
-    NSLog(@"output format:");
-    [self printAudioStreamBasicDescription:outputFormat];
-    status = ExtAudioFileSetProperty(exAudioFile, kExtAudioFileProperty_ClientDataFormat, size, &outputFormat);
-    NSAssert1(!status, @"ExtAudioFileSetProperty eror with status:%d", status);
-
-    
-    // 初始化不能太前，如果未设置好输入输出格式，获取的总frame数不准确
-    size = sizeof(totalFrame);
-    status = ExtAudioFileGetProperty(exAudioFile,
-                                     kExtAudioFileProperty_FileLengthFrames,
-                                     &size,
-                                     &totalFrame);
-    readedFrame = 0;
-    NSAssert(!status, @"ExtAudioFileGetProperty error");
     
     status = AudioUnitSetProperty(audioUnit,
                                   kAudioUnitProperty_StreamFormat,
@@ -149,6 +95,65 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     status = AudioUnitInitialize(audioUnit);
     NSAssert(!status, @"AudioUnitInitialize error");
 }
+
+
+
+- (void)initPlayer {
+    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+    [audioSession setCategory:AVAudioSessionCategoryPlayback error:nil]; // 只有播放
+    
+    // BUFFER
+    buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
+    buffList->mNumberBuffers = 1;
+    buffList->mBuffers[0].mNumberChannels = 1;
+    buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
+    buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
+    
+    
+    // Extend Audio File
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"aac"];
+    OSStatus status = ExtAudioFileOpenURL((__bridge CFURLRef)url, &exAudioFile);
+    NSAssert(!status, @"打开文件失败");
+    
+    uint32_t size = sizeof(AudioStreamBasicDescription);
+    status = ExtAudioFileGetProperty(exAudioFile, kExtAudioFileProperty_FileDataFormat, &size, &audioFileFormat); // 读取文件格式
+    NSAssert1(status == noErr, @"ExtAudioFileGetProperty error status %d", status);
+    
+    //initFormat
+    memset(&outputFormat, 0, sizeof(outputFormat));
+    outputFormat.mSampleRate       = 44100;
+    outputFormat.mFormatID         = kAudioFormatLinearPCM;
+    outputFormat.mFormatFlags      = kLinearPCMFormatFlagIsSignedInteger;
+    outputFormat.mBytesPerPacket   = 2;
+    outputFormat.mFramesPerPacket  = 1;
+    outputFormat.mBytesPerFrame    = 2;
+    outputFormat.mChannelsPerFrame = 1;
+    outputFormat.mBitsPerChannel   = 16;
+    
+    NSLog(@"input format:");
+    [self printAudioStreamBasicDescription:audioFileFormat];
+    NSLog(@"output format:");
+    [self printAudioStreamBasicDescription:outputFormat];
+    
+    status = ExtAudioFileSetProperty(exAudioFile, kExtAudioFileProperty_ClientDataFormat, size, &outputFormat);
+    NSAssert1(!status, @"ExtAudioFileSetProperty eror with status:%d", status);
+
+    // 初始化不能太前，如果未设置好输入输出格式，获取的总frame数不准确
+    size = sizeof(totalFrame);
+    status = ExtAudioFileGetProperty(exAudioFile,
+                                     kExtAudioFileProperty_FileLengthFrames,
+                                     &size,
+                                     &totalFrame);
+    readedFrame = 0;
+    NSAssert(!status, @"ExtAudioFileGetProperty error");
+    
+    // audio unit
+    [self setupAudioUnit];
+}
+
+
+
+
 
 OSStatus PlayCallback(void *inRefCon,
                       AudioUnitRenderActionFlags *ioActionFlags,
