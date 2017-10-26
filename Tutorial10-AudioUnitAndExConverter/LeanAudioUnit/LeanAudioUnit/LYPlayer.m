@@ -111,8 +111,9 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     
     
     // Extend Audio File
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"aac"];
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"pcm"];
     OSStatus status = ExtAudioFileOpenURL((__bridge CFURLRef)url, &exAudioFile);
+    CheckError(status, "");
     NSAssert(!status, @"打开文件失败");
     
     uint32_t size = sizeof(AudioStreamBasicDescription);
@@ -233,5 +234,26 @@ OSStatus PlayCallback(void *inRefCon,
     printf("Channels per Frame:  %10d\n",    (unsigned int)asbd.mChannelsPerFrame);
     printf("Bits per Channel:    %10d\n",    (unsigned int)asbd.mBitsPerChannel);
     printf("\n");
+}
+
+
+
+void CheckError(OSStatus error, const char *operation)
+{
+    if (error == noErr) return;
+    
+    char str[20];
+    // see if it appears to be a 4-char-code
+    *(UInt32 *)(str + 1) = CFSwapInt32HostToBig(error);
+    if (isprint(str[1]) && isprint(str[2]) && isprint(str[3]) && isprint(str[4])) {
+        str[0] = str[5] = '\'';
+        str[6] = '\0';
+    } else
+        // no, format it as an integer
+        sprintf(str, "%d", (int)error);
+    
+    fprintf(stderr, "Error: %s (%s)\n", operation, str);
+    
+    exit(1);
 }
 @end
