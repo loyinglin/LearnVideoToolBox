@@ -67,8 +67,8 @@
     // Dispose of any resources that can be recreated.
 }
 
-
-- (void)initAudioUnit {
+- (void)initBufferAndFormat {
+    // open file
     NSURL *url = [[NSBundle mainBundle] URLForResource:@"test" withExtension:@"pcm"];
     inputSteam = [NSInputStream inputStreamWithURL:url];
     if (!inputSteam) {
@@ -77,19 +77,11 @@
     else {
         [inputSteam open];
     }
-
-    
-    NSError *error = nil;
     
     // audio session
-    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:&error];
-    if (error) {
-        NSLog(@"setCategory error:%@", error);
-    }
-    [[AVAudioSession sharedInstance] setPreferredIOBufferDuration:0.05 error:&error];
-    if (error) {
-        NSLog(@"setPreferredIOBufferDuration error:%@", error);
-    }
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+    [[AVAudioSession sharedInstance] setPreferredIOBufferDuration:0.05 error:nil];
+    
     // buffer
     uint32_t numberBuffers = 1;
     buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
@@ -99,6 +91,22 @@
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
     buffer = malloc(CONST_BUFFER_SIZE);
     
+    
+    // audio format
+    audioFormat.mSampleRate = 44100;
+    audioFormat.mFormatID = kAudioFormatLinearPCM;
+    audioFormat.mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsNonInterleaved;
+    audioFormat.mFramesPerPacket = 1;
+    audioFormat.mChannelsPerFrame = 1;
+    audioFormat.mBytesPerPacket = 2;
+    audioFormat.mBytesPerFrame = 2;
+    audioFormat.mBitsPerChannel = 16;
+}
+
+- (void)initAudioUnit {
+    [self initBufferAndFormat];
+    
+    // augraph
     CheckError(NewAUGraph(&auGraph), "NewAUGraph error");
     CheckError(AUGraphOpen(auGraph), "open graph fail");
     
@@ -113,8 +121,7 @@
     CheckError(AUGraphAddNode(auGraph, &outputAudioDesc, &outputNode), "add node fail");
     CheckError(AUGraphNodeInfo(auGraph, outputNode, NULL, &outputUnit), "get audio unit fail");
     
-    
-    
+    // mix audio unit
     AudioComponentDescription mixAudioDesc;
     mixAudioDesc.componentType = kAudioUnitType_Mixer;
     mixAudioDesc.componentSubType = kAudioUnitSubType_MultiChannelMixer;
@@ -125,49 +132,27 @@
     CheckError(AUGraphAddNode(auGraph, &mixAudioDesc, &mixNode), "add node fail");
     CheckError(AUGraphNodeInfo(auGraph, mixNode, NULL, &mixUnit), "get audio unit fail");
     
-    CheckError(AUGraphConnectNodeInput(auGraph, mixNode, OUTPUT_BUS, outputNode, OUTPUT_BUS), "connect fail"); // 这里很好奇为何outputUnit也是outputBus，而不是inputBus
-    
-    
-    
+    // connect
+    CheckError(AUGraphConnectNodeInput(auGraph, mixNode, OUTPUT_BUS, outputNode, OUTPUT_BUS), "connect fail"); // 这里很好奇为何outputUnit也是outputBus，而不是inputBus？因为不是所有的unit都有两条in/out bus，这里是把Mix的输出，作为I/O Unit的输出bus的输入
+
     // set format
-    AudioStreamBasicDescription inputFormat;
-    inputFormat.mSampleRate = 44100;
-    inputFormat.mFormatID = kAudioFormatLinearPCM;
-    inputFormat.mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsNonInterleaved;
-    inputFormat.mFramesPerPacket = 1;
-    inputFormat.mChannelsPerFrame = 1;
-    inputFormat.mBytesPerPacket = 2;
-    inputFormat.mBytesPerFrame = 2;
-    inputFormat.mBitsPerChannel = 16;
-    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, INPUT_BUS, &inputFormat, sizeof(inputFormat)), "set format fail");
-    audioFormat = inputFormat;
-    
-    AudioStreamBasicDescription outputFormat = inputFormat;
-    outputFormat.mChannelsPerFrame = 2;
-    
-    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, OUTPUT_BUS, &outputFormat, sizeof(outputFormat)), "set fomat fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, INPUT_BUS, &audioFormat, sizeof(audioFormat)), "set format fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, OUTPUT_BUS, &audioFormat, sizeof(audioFormat)), "set fomat fail");
     
     // enable record
     UInt32 flag = 1;
     CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Input, INPUT_BUS, &flag,sizeof(flag)), "set flag fail");
+    
+    [self setupMixUnit];
     
     // set callback
     AURenderCallbackStruct recordCallback;
     recordCallback.inputProc = RecordCallback;
     recordCallback.inputProcRefCon = (__bridge void *)self;
     
-//    CheckError(AUGraphSetNodeInputCallback(auGraph, auNode, INPUT_BUS, &recordCallback), "record callback set fail");
+//    CheckError(AUGraphSetNodeInputCallback(auGraph, auNode, INPUT_BUS, &recordCallback), "record callback set fail");  // 这个不行，因为scope不一致
     CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_SetInputCallback, kAudioUnitScope_Output, INPUT_BUS, &recordCallback, sizeof(recordCallback)), "set property fail");
 
-    
-    AURenderCallbackStruct playCallback;
-    playCallback.inputProc = PlayCallback;
-    playCallback.inputProcRefCon = (__bridge void *)self;
-    CheckError(AUGraphSetNodeInputCallback(auGraph, outputNode, OUTPUT_BUS, &playCallback), "playc callback set fail");
-    
-    
-    [self setupMixUnit];
-    
     CheckError(AUGraphInitialize(auGraph), "init augraph fail");
     CheckError(AUGraphStart(auGraph), "start graph fail");
 }
@@ -178,26 +163,40 @@
     CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_ElementCount, kAudioUnitScope_Input, OUTPUT_BUS, &busCount, sizeof(UInt32)), "set property fail");
     
     AURenderCallbackStruct callback0;
-    callback0.inputProc = &mixCallback0;
+    callback0.inputProc = mixCallback0;
     callback0.inputProcRefCon = (__bridge void *)self;
     CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback0, sizeof(AURenderCallbackStruct)), "add mix callback fail");
     CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
     
     
     AURenderCallbackStruct callback1;
-    callback1.inputProc = &mixCallback1;
+    callback1.inputProc = mixCallback1;
     callback1.inputProcRefCon = (__bridge void *)self;
-    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback1, sizeof(AURenderCallbackStruct)), "add mix callback fail");
-    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 1, &callback1, sizeof(AURenderCallbackStruct)), "add mix callback fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 1, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
 }
 
 
 #pragma mark - callback
 static OSStatus mixCallback0(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
+    ViewController *vc = (__bridge ViewController *)inRefCon;
+    
+    NSInteger bytes = CONST_BUFFER_SIZE < ioData->mBuffers[0].mDataByteSize * 2 ? CONST_BUFFER_SIZE : ioData->mBuffers[0].mDataByteSize * 2; //
+    bytes = [vc->inputSteam read:vc->buffer maxLength:bytes];
+    
+    for (int i = 0; i < bytes; ++i) {
+        ((Byte*)ioData->mBuffers[0].mData)[i/2] = vc->buffer[i];
+    }
+    ioData->mBuffers[1].mDataByteSize = (UInt32)bytes / 2;
+    
     return noErr;
 }
 
 static OSStatus mixCallback1(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
+    ViewController *vc = (__bridge ViewController *)inRefCon;
+    memcpy(ioData->mBuffers[0].mData, vc->buffList->mBuffers[0].mData, vc->buffList->mBuffers[0].mDataByteSize);
+    ioData->mBuffers[0].mDataByteSize = vc->buffList->mBuffers[0].mDataByteSize;
+    
     return noErr;
 }
 
@@ -215,38 +214,12 @@ static OSStatus RecordCallback(void *inRefCon,
         NSLog(@"AudioUnitRender error:%d", status);
     }
     
-    NSLog(@"size1 = %d", vc->buffList->mBuffers[0].mDataByteSize);
+    NSLog(@"RecordCallback size = %d", vc->buffList->mBuffers[0].mDataByteSize);
     [vc writePCMData:vc->buffList->mBuffers[0].mData size:vc->buffList->mBuffers[0].mDataByteSize];
     
     return noErr;
 }
 
-static OSStatus PlayCallback(void *inRefCon,
-                             AudioUnitRenderActionFlags *ioActionFlags,
-                             const AudioTimeStamp *inTimeStamp,
-                             UInt32 inBusNumber,
-                             UInt32 inNumberFrames,
-                             AudioBufferList *ioData) {
-    ViewController *vc = (__bridge ViewController *)inRefCon;
-    memcpy(ioData->mBuffers[0].mData, vc->buffList->mBuffers[0].mData, vc->buffList->mBuffers[0].mDataByteSize);
-    ioData->mBuffers[0].mDataByteSize = vc->buffList->mBuffers[0].mDataByteSize;
-    
-    NSInteger bytes = CONST_BUFFER_SIZE < ioData->mBuffers[1].mDataByteSize * 2 ? CONST_BUFFER_SIZE : ioData->mBuffers[1].mDataByteSize * 2; //
-    bytes = [vc->inputSteam read:vc->buffer maxLength:bytes];
-    
-    for (int i = 0; i < bytes; ++i) {
-        ((Byte*)ioData->mBuffers[1].mData)[i/2] = vc->buffer[i];
-    }
-    ioData->mBuffers[1].mDataByteSize = (UInt32)bytes / 2;
-    
-    if (ioData->mBuffers[1].mDataByteSize < ioData->mBuffers[0].mDataByteSize) {
-        ioData->mBuffers[0].mDataByteSize = ioData->mBuffers[1].mDataByteSize;
-    }
-    
-    NSLog(@"size2 = %d", ioData->mBuffers[0].mDataByteSize);
-    
-    return noErr;
-}
 
 - (void)writePCMData:(Byte *)buffer size:(int)size {
     static FILE *file = NULL;
