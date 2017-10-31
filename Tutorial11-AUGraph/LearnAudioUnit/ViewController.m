@@ -19,20 +19,20 @@
 
 @implementation ViewController
 {
-    AudioUnit audioUnit;
+    AudioUnit outputUnit;
+    AudioUnit mixUnit;
     AudioBufferList *buffList;
     
     NSInputStream *inputSteam;
     Byte *buffer;
     
     AUGraph auGraph;
+    AudioStreamBasicDescription audioFormat;
 }
 
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view, typically from a nib.
-    
 }
 
 - (IBAction)start:(UIView *)sender {
@@ -90,35 +90,44 @@
     if (error) {
         NSLog(@"setPreferredIOBufferDuration error:%@", error);
     }
-    // buffer list
+    // buffer
     uint32_t numberBuffers = 1;
-    buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList) + (numberBuffers - 1) * sizeof(AudioBuffer));
+    buffList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
     buffList->mNumberBuffers = numberBuffers;
     buffList->mBuffers[0].mNumberChannels = 1;
     buffList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
     buffList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
-                                   
-    for (int i =1; i < numberBuffers; ++i) {
-        buffList->mBuffers[i].mNumberChannels = 1;
-        buffList->mBuffers[i].mDataByteSize = CONST_BUFFER_SIZE;
-        buffList->mBuffers[i].mData = malloc(CONST_BUFFER_SIZE);
-    }
-    
     buffer = malloc(CONST_BUFFER_SIZE);
-    // audio unit new
-    AudioComponentDescription audioDesc;
-    audioDesc.componentType = kAudioUnitType_Output;
-    audioDesc.componentSubType = kAudioUnitSubType_RemoteIO;
-    audioDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
-    audioDesc.componentFlags = 0;
-    audioDesc.componentFlagsMask = 0;
     
     CheckError(NewAUGraph(&auGraph), "NewAUGraph error");
     CheckError(AUGraphOpen(auGraph), "open graph fail");
     
-    AUNode auNode;
-    CheckError(AUGraphAddNode(auGraph, &audioDesc, &auNode), "add node fail");
-    CheckError(AUGraphNodeInfo(auGraph, auNode, NULL, &audioUnit), "get audio unit fail");
+    // output audio unit
+    AudioComponentDescription outputAudioDesc;
+    outputAudioDesc.componentType = kAudioUnitType_Output;
+    outputAudioDesc.componentSubType = kAudioUnitSubType_RemoteIO;
+    outputAudioDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+    outputAudioDesc.componentFlags = 0;
+    outputAudioDesc.componentFlagsMask = 0;
+    AUNode outputNode;
+    CheckError(AUGraphAddNode(auGraph, &outputAudioDesc, &outputNode), "add node fail");
+    CheckError(AUGraphNodeInfo(auGraph, outputNode, NULL, &outputUnit), "get audio unit fail");
+    
+    
+    
+    AudioComponentDescription mixAudioDesc;
+    mixAudioDesc.componentType = kAudioUnitType_Mixer;
+    mixAudioDesc.componentSubType = kAudioUnitSubType_MultiChannelMixer;
+    mixAudioDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+    mixAudioDesc.componentFlags = 0;
+    mixAudioDesc.componentFlagsMask = 0;
+    AUNode mixNode;
+    CheckError(AUGraphAddNode(auGraph, &mixAudioDesc, &mixNode), "add node fail");
+    CheckError(AUGraphNodeInfo(auGraph, mixNode, NULL, &mixUnit), "get audio unit fail");
+    
+    CheckError(AUGraphConnectNodeInput(auGraph, mixNode, OUTPUT_BUS, outputNode, OUTPUT_BUS), "connect fail"); // 这里很好奇为何outputUnit也是outputBus，而不是inputBus
+    
+    
     
     // set format
     AudioStreamBasicDescription inputFormat;
@@ -130,17 +139,17 @@
     inputFormat.mBytesPerPacket = 2;
     inputFormat.mBytesPerFrame = 2;
     inputFormat.mBitsPerChannel = 16;
-    CheckError(AudioUnitSetProperty(audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, INPUT_BUS, &inputFormat, sizeof(inputFormat)), "set format fail");
-    
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, INPUT_BUS, &inputFormat, sizeof(inputFormat)), "set format fail");
+    audioFormat = inputFormat;
     
     AudioStreamBasicDescription outputFormat = inputFormat;
     outputFormat.mChannelsPerFrame = 2;
     
-    CheckError(AudioUnitSetProperty(audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, OUTPUT_BUS, &outputFormat, sizeof(outputFormat)), "set fomat fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, OUTPUT_BUS, &outputFormat, sizeof(outputFormat)), "set fomat fail");
     
     // enable record
     UInt32 flag = 1;
-    CheckError(AudioUnitSetProperty(audioUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Input, INPUT_BUS, &flag,sizeof(flag)), "set flag fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Input, INPUT_BUS, &flag,sizeof(flag)), "set flag fail");
     
     // set callback
     AURenderCallbackStruct recordCallback;
@@ -148,22 +157,49 @@
     recordCallback.inputProcRefCon = (__bridge void *)self;
     
 //    CheckError(AUGraphSetNodeInputCallback(auGraph, auNode, INPUT_BUS, &recordCallback), "record callback set fail");
-    CheckError(AudioUnitSetProperty(audioUnit, kAudioOutputUnitProperty_SetInputCallback, kAudioUnitScope_Output, INPUT_BUS, &recordCallback, sizeof(recordCallback)), "set property fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_SetInputCallback, kAudioUnitScope_Output, INPUT_BUS, &recordCallback, sizeof(recordCallback)), "set property fail");
 
     
     AURenderCallbackStruct playCallback;
     playCallback.inputProc = PlayCallback;
     playCallback.inputProcRefCon = (__bridge void *)self;
-    CheckError(AUGraphSetNodeInputCallback(auGraph, auNode, OUTPUT_BUS, &playCallback), "playc callback set fail");
+    CheckError(AUGraphSetNodeInputCallback(auGraph, outputNode, OUTPUT_BUS, &playCallback), "playc callback set fail");
     
+    
+    [self setupMixUnit];
     
     CheckError(AUGraphInitialize(auGraph), "init augraph fail");
     CheckError(AUGraphStart(auGraph), "start graph fail");
 }
 
+- (void)setupMixUnit {
+    // setup mix unit
+    UInt32 busCount = 2;
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_ElementCount, kAudioUnitScope_Input, OUTPUT_BUS, &busCount, sizeof(UInt32)), "set property fail");
+    
+    AURenderCallbackStruct callback0;
+    callback0.inputProc = &mixCallback0;
+    callback0.inputProcRefCon = (__bridge void *)self;
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback0, sizeof(AURenderCallbackStruct)), "add mix callback fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
+    
+    
+    AURenderCallbackStruct callback1;
+    callback1.inputProc = &mixCallback1;
+    callback1.inputProcRefCon = (__bridge void *)self;
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback1, sizeof(AURenderCallbackStruct)), "add mix callback fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
+}
 
 
 #pragma mark - callback
+static OSStatus mixCallback0(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
+    return noErr;
+}
+
+static OSStatus mixCallback1(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
+    return noErr;
+}
 
 static OSStatus RecordCallback(void *inRefCon,
                                AudioUnitRenderActionFlags *ioActionFlags,
@@ -174,7 +210,7 @@ static OSStatus RecordCallback(void *inRefCon,
 {
     ViewController *vc = (__bridge ViewController *)inRefCon;
     vc->buffList->mNumberBuffers = 1;
-    OSStatus status = AudioUnitRender(vc->audioUnit, ioActionFlags, inTimeStamp, inBusNumber, inNumberFrames, vc->buffList);
+    OSStatus status = AudioUnitRender(vc->outputUnit, ioActionFlags, inTimeStamp, inBusNumber, inNumberFrames, vc->buffList);
     if (status != noErr) {
         NSLog(@"AudioUnitRender error:%d", status);
     }
