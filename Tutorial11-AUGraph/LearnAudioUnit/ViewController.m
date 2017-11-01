@@ -10,8 +10,15 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioUnit/AudioUnit.h>
 
-#define INPUT_BUS 1
-#define OUTPUT_BUS 0
+// 这里的InputBus和OutputBus 是针对RemoteI/O而言
+#define REMOTE_IO_UNIT_INPUT_BUS 1
+#define REMOTE_IO_UNIT_OUTPUT_BUS 0
+
+// mix的bus
+#define MIX_UNIT_OUTPUT_BUS 0
+#define MIX_UNIT_INPUT_BUS0 0
+#define MIX_UNIT_INPUT_BUS1 1
+
 #define CONST_BUFFER_SIZE 2048*2*10
 
 #define startTag 10
@@ -133,15 +140,15 @@
     CheckError(AUGraphNodeInfo(auGraph, mixNode, NULL, &mixUnit), "get audio unit fail");
     
     // connect
-    CheckError(AUGraphConnectNodeInput(auGraph, mixNode, OUTPUT_BUS, outputNode, OUTPUT_BUS), "connect fail"); // 这里很好奇为何outputUnit也是outputBus，而不是inputBus？因为不是所有的unit都有两条in/out bus，这里是把Mix的输出，作为I/O Unit的输出bus的输入
+    CheckError(AUGraphConnectNodeInput(auGraph, mixNode, MIX_UNIT_OUTPUT_BUS, outputNode, REMOTE_IO_UNIT_OUTPUT_BUS), "connect fail"); // 这里很好奇为何mixUnit和outputUnit的bus都是outputBus，而不是inputBus？mixUnit就只有一个outputBus；这里是把Mix的输出，作为I/O Unit的element 0的输入
 
     // set format
-    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, INPUT_BUS, &audioFormat, sizeof(audioFormat)), "set format fail");
-    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, OUTPUT_BUS, &audioFormat, sizeof(audioFormat)), "set fomat fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, REMOTE_IO_UNIT_INPUT_BUS, &audioFormat, sizeof(audioFormat)), "set format fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, REMOTE_IO_UNIT_OUTPUT_BUS, &audioFormat, sizeof(audioFormat)), "set fomat fail");
     
     // enable record
     UInt32 flag = 1;
-    CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Input, INPUT_BUS, &flag,sizeof(flag)), "set flag fail");
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Input, REMOTE_IO_UNIT_INPUT_BUS, &flag,sizeof(flag)), "set flag fail");
     
     [self setupMixUnit];
     
@@ -150,8 +157,8 @@
     recordCallback.inputProc = RecordCallback;
     recordCallback.inputProcRefCon = (__bridge void *)self;
     
-//    CheckError(AUGraphSetNodeInputCallback(auGraph, auNode, INPUT_BUS, &recordCallback), "record callback set fail");  // 这个不行，因为scope不一致
-    CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_SetInputCallback, kAudioUnitScope_Output, INPUT_BUS, &recordCallback, sizeof(recordCallback)), "set property fail");
+//    CheckError(AUGraphSetNodeInputCallback(auGraph, outputNode, INPUT_BUS, &recordCallback), "record callback set fail");  // 这个不行，因为scope不一致
+    CheckError(AudioUnitSetProperty(outputUnit, kAudioOutputUnitProperty_SetInputCallback, kAudioUnitScope_Output, REMOTE_IO_UNIT_INPUT_BUS, &recordCallback, sizeof(recordCallback)), "set property fail");
 
     CheckError(AUGraphInitialize(auGraph), "init augraph fail");
     CheckError(AUGraphStart(auGraph), "start graph fail");
@@ -160,20 +167,24 @@
 - (void)setupMixUnit {
     // setup mix unit
     UInt32 busCount = 2;
-    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_ElementCount, kAudioUnitScope_Input, OUTPUT_BUS, &busCount, sizeof(UInt32)), "set property fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_ElementCount, kAudioUnitScope_Input, MIX_UNIT_INPUT_BUS0, &busCount, sizeof(UInt32)), "set property fail");
+    
+    UInt32 size = sizeof(UInt32);
+    CheckError(AudioUnitGetProperty(mixUnit, kAudioUnitProperty_ElementCount, kAudioUnitScope_Input, MIX_UNIT_INPUT_BUS0, &busCount, &size), "get property fail");
+    CheckError(AudioUnitGetProperty(outputUnit, kAudioUnitProperty_ElementCount, kAudioUnitScope_Global, REMOTE_IO_UNIT_INPUT_BUS, &busCount, &size), "get property fail");
     
     AURenderCallbackStruct callback0;
     callback0.inputProc = mixCallback0;
     callback0.inputProcRefCon = (__bridge void *)self;
-    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback0, sizeof(AURenderCallbackStruct)), "add mix callback fail");
-    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, MIX_UNIT_INPUT_BUS0, &callback0, sizeof(AURenderCallbackStruct)), "add mix callback fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, MIX_UNIT_INPUT_BUS0, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
     
     
     AURenderCallbackStruct callback1;
     callback1.inputProc = mixCallback1;
     callback1.inputProcRefCon = (__bridge void *)self;
-    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 1, &callback1, sizeof(AURenderCallbackStruct)), "add mix callback fail");
-    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 1, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, MIX_UNIT_INPUT_BUS1, &callback1, sizeof(AURenderCallbackStruct)), "add mix callback fail");
+    CheckError(AudioUnitSetProperty(mixUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, MIX_UNIT_INPUT_BUS1, &audioFormat, sizeof(AudioStreamBasicDescription)), "set mix format fail");
 }
 
 
