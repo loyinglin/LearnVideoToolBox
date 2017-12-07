@@ -16,7 +16,9 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 @implementation LYPlayer
 {
-    AudioUnit audioUnit;    
+    AudioUnit audioUnit;
+    AudioBufferList *bufferList;
+    UInt32 readedSize;
 }
 
 - (void)play {
@@ -31,7 +33,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 
 
-- (void)prepareForPlayWithOutputASBD:(AudioStreamBasicDescription *)outputFormat {
+- (void)prepareForPlayWithOutputASBD:(AudioStreamBasicDescription)outputFormat {
     // open pcm stream
     
     NSError *error = nil;
@@ -40,6 +42,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     // set audio session
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayback error:&error];
+    [audioSession setPreferredIOBufferDuration:0.1 error:&error];
     
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
@@ -66,7 +69,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     }
     
     // format
-    [self printAudioStreamBasicDescription:*outputFormat];
+    [self printAudioStreamBasicDescription:outputFormat];
 
     status = AudioUnitSetProperty(audioUnit,
                                   kAudioUnitProperty_StreamFormat,
@@ -104,18 +107,20 @@ static OSStatus PlayCallback(void *inRefCon,
                              AudioBufferList *ioData) {
     LYPlayer *player = (__bridge LYPlayer *)inRefCon;
     
-    AudioBufferList *bufferList = [player.delegate onRequestAudioData];
+    if (!player->bufferList || player->readedSize + ioData->mBuffers[0].mDataByteSize > player->bufferList->mBuffers[0].mDataByteSize) {
+        player->bufferList = [player.delegate onRequestAudioData];
+        player->readedSize = 0;
+    }
     
-
-    if (!bufferList || bufferList->mNumberBuffers == 0) {
+    if (!player->bufferList || player->bufferList->mNumberBuffers == 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [player stop];
         });
     }
     else {
-        for (int i = 0; i < bufferList->mNumberBuffers; ++i) {
-            memcpy(ioData->mBuffers[i].mData, bufferList->mBuffers[i].mData, bufferList->mBuffers[i].mDataByteSize);
-            ioData->mBuffers[i].mDataByteSize = bufferList->mBuffers[i].mDataByteSize;
+        for (int i = 0; i < player->bufferList->mNumberBuffers; ++i) {
+            memcpy(ioData->mBuffers[i].mData, player->bufferList->mBuffers[i].mData + player->readedSize, ioData->mBuffers[i].mDataByteSize);
+            player->readedSize += ioData->mBuffers[i].mDataByteSize;
         }
         NSLog(@"out size: %d", ioData->mBuffers[0].mDataByteSize);
     }

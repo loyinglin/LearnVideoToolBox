@@ -23,7 +23,7 @@
 
 @property (nonatomic, weak) id<LYPlayerDelegate> delegate;
 
-- (void)prepareForPlayWithOutputASBD:(AudioStreamBasicDescription *)outputFormat;
+- (void)prepareForPlayWithOutputASBD:(AudioStreamBasicDescription)outputFormat;
 
 - (void)play;
 
