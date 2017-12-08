@@ -213,7 +213,7 @@
 
 - (void)onPlayToEnd:(LYPlayer *)player {
     self.mPlayButton.enabled = YES;
-//    self.mDisplayLink.paused = YES;
+    self.mDisplayLink.paused = YES;
 }
 
 - (void)printAudioStreamBasicDescription:(AudioStreamBasicDescription)asbd {
