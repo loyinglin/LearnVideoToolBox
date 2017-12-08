@@ -19,6 +19,8 @@
 		FDF1183B1F7A4E6A007CBA46 /* abc.pcm in Resources */ = {isa = PBXBuildFile; fileRef = FDF118361F7A4E6A007CBA46 /* abc.pcm */; };
 		FDF1183C1F7A4E6A007CBA46 /* test.pcm in Resources */ = {isa = PBXBuildFile; fileRef = FDF118371F7A4E6A007CBA46 /* test.pcm */; };
 		FDF1183F1F7A4EA8007CBA46 /* LYPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = FDF1183E1F7A4EA8007CBA46 /* LYPlayer.m */; };
+		FDF4F41B1FD8EFA300C711AF /* test.mov in Resources */ = {isa = PBXBuildFile; fileRef = FDF4F4191FD8EFA300C711AF /* test.mov */; };
+		FDF4F41C1FD8EFA300C711AF /* abc.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = FDF4F41A1FD8EFA300C711AF /* abc.mp4 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +41,8 @@
 		FDF118371F7A4E6A007CBA46 /* test.pcm */ = {isa = PBXFileReference; lastKnownFileType = file; path = test.pcm; sourceTree = "<group>"; };
 		FDF1183D1F7A4EA8007CBA46 /* LYPlayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LYPlayer.h; sourceTree = "<group>"; };
 		FDF1183E1F7A4EA8007CBA46 /* LYPlayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LYPlayer.m; sourceTree = "<group>"; };
+		FDF4F4191FD8EFA300C711AF /* test.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = test.mov; sourceTree = "<group>"; };
+		FDF4F41A1FD8EFA300C711AF /* abc.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = abc.mp4; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,6 +94,8 @@
 		FDF118321F7A4E6A007CBA46 /* CommonResource */ = {
 			isa = PBXGroup;
 			children = (
+				FDF4F41A1FD8EFA300C711AF /* abc.mp4 */,
+				FDF4F4191FD8EFA300C711AF /* test.mov */,
 				FDF118331F7A4E6A007CBA46 /* abc.aac */,
 				FDF118341F7A4E6A007CBA46 /* abc.m4a */,
 				FDF118351F7A4E6A007CBA46 /* abc.mp3 */,
@@ -160,10 +166,12 @@
 			files = (
 				FDF118381F7A4E6A007CBA46 /* abc.aac in Resources */,
 				FDF118291F7A4E19007CBA46 /* LaunchScreen.storyboard in Resources */,
+				FDF4F41C1FD8EFA300C711AF /* abc.mp4 in Resources */,
 				FDF118391F7A4E6A007CBA46 /* abc.m4a in Resources */,
 				FDF1183A1F7A4E6A007CBA46 /* abc.mp3 in Resources */,
 				FDF1183B1F7A4E6A007CBA46 /* abc.pcm in Resources */,
 				FDF118261F7A4E19007CBA46 /* Assets.xcassets in Resources */,
+				FDF4F41B1FD8EFA300C711AF /* test.mov in Resources */,
 				FDF1183C1F7A4E6A007CBA46 /* test.pcm in Resources */,
 				FDF118241F7A4E19007CBA46 /* Main.storyboard in Resources */,
 			);

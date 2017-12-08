@@ -21,6 +21,9 @@
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="8i6-lG-94i">
                                 <rect key="frame" x="172" y="205" width="31" height="30"/>
                                 <state key="normal" title="播放"/>
+                                <connections>
+                                    <action selector="onClick:" destination="BYZ-38-t0r" eventType="touchUpInside" id="SpV-xs-BjU"/>
+                                </connections>
                             </button>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="使用AudioUnit播放CMSampleBuffer" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="60O-QF-GSf">
                                 <rect key="frame" x="50" y="155" width="275" height="21"/>
@@ -38,6 +41,9 @@
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
+                    <connections>
+                        <outlet property="mPlayButton" destination="8i6-lG-94i" id="K6z-sR-5Yc"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>

@@ -55,10 +55,11 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 
 - (void)initPlayer {
     
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"mp3"];
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"test" withExtension:@"mov"];
     OSStatus status = AudioFileOpenURL((__bridge CFURLRef)url, kAudioFileReadPermission, 0, &audioFileID);
     if (status) {
         NSLog(@"打开文件失败 %@", url);
+        return ;
     }
     
     uint32_t size = sizeof(AudioStreamBasicDescription);

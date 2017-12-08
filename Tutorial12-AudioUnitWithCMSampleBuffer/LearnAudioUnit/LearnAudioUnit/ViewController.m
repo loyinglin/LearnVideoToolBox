@@ -14,9 +14,7 @@
 @interface ViewController () <LYPlayerDelegate>
 
 // about ui
-@property (nonatomic, strong) UIButton *mPlayButton;
-@property (nonatomic, strong) UILabel *mTimeLabel;
-@property (nonatomic , strong) NSDate *mStartDate;
+@property (nonatomic, strong) IBOutlet UIButton *mPlayButton;
 
 // avfoudation
 @property (nonatomic , strong) AVAsset *mAsset;
@@ -55,7 +53,6 @@
                 return;
             }
             weakSelf.mAsset = inputAsset;
-            [weakSelf startPlay];
         });
     }];
 }
@@ -117,7 +114,6 @@
         return;
     }
     else {
-        self.mStartDate = [NSDate dateWithTimeIntervalSinceNow:0];
         NSLog(@"Start reading success.");
         [self.mLYPlayer play];
     }
@@ -127,7 +123,8 @@
 
 
 - (IBAction)onClick:(UIButton *)sender {
-    
+    self.mPlayButton.enabled = NO;
+    [self startPlay];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -139,7 +136,6 @@
 
 - (AudioBufferList *)onRequestAudioData {
     CMSampleBufferRef sampleBuffer = [self.mReaderAudioTrackOutput copyNextSampleBuffer];
-//    CMItemCount numberOfFrames = CMSampleBufferGetNumSamples(sampleBuffer); // corresponds to the number of CoreAudio audio frames
     size_t bufferListSizeNeededOut = 0;
     if (self.blockBufferOut != nil) {
         CFRelease(self.blockBufferOut);
@@ -155,16 +151,15 @@
                                                                            kCFAllocatorSystemDefault,
                                                                            kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment,
                                                                            &_blockBufferOut);
-    NSMutableData *data;
     if (err) {
         NSLog(@"CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer error: %d", err);
     }
-    if (self.blockBufferOut != NULL) {
-        self.mTimeLabel.text = [NSString stringWithFormat:@"播放%.f秒", [[NSDate dateWithTimeIntervalSinceNow:0] timeIntervalSinceDate:self.mStartDate]];
-        [self.mTimeLabel sizeToFit];
-        
-    }
     return &_audioBufferList;
+}
+
+
+- (void)onPlayToEnd:(LYPlayer *)player {
+    self.mPlayButton.enabled = YES;
 }
 
 - (void)printAudioStreamBasicDescription:(AudioStreamBasicDescription)asbd {
