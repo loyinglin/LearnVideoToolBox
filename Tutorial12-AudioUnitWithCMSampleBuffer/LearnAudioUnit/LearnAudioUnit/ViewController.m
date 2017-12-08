@@ -10,6 +10,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AssetsLibrary/ALAssetsLibrary.h>
 #import "LYPlayer.h"
+#import "LYOpenGLView.h"
 
 @interface ViewController () <LYPlayerDelegate>
 
@@ -21,12 +22,20 @@
 @property (nonatomic , strong) AVAssetReader *mReader;
 @property (nonatomic , strong) AVAssetReaderTrackOutput *mReaderAudioTrackOutput;
 @property (nonatomic , assign) AudioStreamBasicDescription fileFormat;
-// timer
-@property (nonatomic , strong) CADisplayLink *mDisplayLink;
+
 
 @property (nonatomic, strong) LYPlayer *mLYPlayer;
 @property (nonatomic, assign) CMBlockBufferRef blockBufferOut;
 @property (nonatomic, assign) AudioBufferList audioBufferList;
+
+
+// gl
+@property (nonatomic, strong) IBOutlet LYOpenGLView *mGLView;
+@property (nonatomic , strong) AVAssetReaderTrackOutput *mReaderVideoTrackOutput;
+@property (nonatomic , strong) CADisplayLink *mDisplayLink;
+
+@property (nonatomic, assign) long mAudioTimeStamp;
+@property (nonatomic, assign) long mVideoTimeStamp;
 @end
 
 @implementation ViewController
@@ -35,13 +44,21 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
     
+    [self.mGLView setupGL];
+    [self.view addSubview:self.mGLView];
+    
+    self.mDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkCallback:)];
+//    self.mDisplayLink.frameInterval = 2; //FPS=30
+    [[self mDisplayLink] addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+    [[self mDisplayLink] setPaused:YES];
+    
     [self loadAsset];
 }
 
 
 - (void)loadAsset {
     NSDictionary *inputOptions = [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:AVURLAssetPreferPreciseDurationAndTimingKey];
-    AVURLAsset *inputAsset = [[AVURLAsset alloc] initWithURL:[[NSBundle mainBundle] URLForResource:@"abc" withExtension:@"mp4"] options:inputOptions];
+    AVURLAsset *inputAsset = [[AVURLAsset alloc] initWithURL:[[NSBundle mainBundle] URLForResource:@"test" withExtension:@"mov"] options:inputOptions];
     __weak typeof(self) weakSelf = self;
     [inputAsset loadValuesAsynchronouslyForKeys:[NSArray arrayWithObject:@"tracks"] completionHandler: ^{
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -63,7 +80,6 @@
     AVAssetReader *assetReader = [AVAssetReader assetReaderWithAsset:self.mAsset error:&error];
     
     NSMutableDictionary *outputSettings = [NSMutableDictionary dictionary];
-    
     [outputSettings setObject:@(kAudioFormatLinearPCM) forKey:AVFormatIDKey];
     [outputSettings setObject:@(16) forKey:AVLinearPCMBitDepthKey];
     [outputSettings setObject:@(NO) forKey:AVLinearPCMIsBigEndianKey];
@@ -97,7 +113,11 @@
         }
     }
     
-    
+    outputSettings = [NSMutableDictionary dictionary];
+    [outputSettings setObject:@(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) forKey:(id)kCVPixelBufferPixelFormatTypeKey];
+    self.mReaderVideoTrackOutput = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:[[self.mAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0] outputSettings:outputSettings];
+    self.mReaderVideoTrackOutput.alwaysCopiesSampleData = NO;
+    [assetReader addOutput:self.mReaderVideoTrackOutput];
     
     return assetReader;
 }
@@ -116,6 +136,8 @@
     else {
         NSLog(@"Start reading success.");
         [self.mLYPlayer play];
+        [self.mDisplayLink setPaused:NO];
+        self.mAudioTimeStamp = self.mVideoTimeStamp = 0;
     }
 }
 
@@ -137,9 +159,9 @@
 - (AudioBufferList *)onRequestAudioData {
     CMSampleBufferRef sampleBuffer = [self.mReaderAudioTrackOutput copyNextSampleBuffer];
     size_t bufferListSizeNeededOut = 0;
-    if (self.blockBufferOut != nil) {
-        CFRelease(self.blockBufferOut);
-    }
+//    if (self.blockBufferOut != nil) {
+//        CFRelease(self.blockBufferOut);
+//    }
     if (!sampleBuffer) {
         return NULL;
     }
@@ -154,12 +176,44 @@
     if (err) {
         NSLog(@"CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer error: %d", err);
     }
+    
+    CMTime presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+    long timeStamp = (1000 * presentationTimeStamp.value) / presentationTimeStamp.timescale;
+    NSLog(@"audio timestamp %lu", timeStamp);
+    self.mAudioTimeStamp = timeStamp;
+    
+    
     return &_audioBufferList;
+}
+
+
+- (void)displayLinkCallback:(CADisplayLink *)sender {
+//    if (self.mVideoTimeStamp < self.mAudioTimeStamp) {
+        [self renderVideo];
+//    }
+}
+
+- (void)renderVideo {
+    CMSampleBufferRef videoSamepleBuffer = [self.mReaderVideoTrackOutput copyNextSampleBuffer];
+
+    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(videoSamepleBuffer);
+    if (pixelBuffer) {
+        [self.mGLView displayPixelBuffer:pixelBuffer];
+        
+        
+        CMTime presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(videoSamepleBuffer);
+        long timeStamp = (1000 * presentationTimeStamp.value) / presentationTimeStamp.timescale;
+        NSLog(@"video timestamp %lu", timeStamp);
+        self.mVideoTimeStamp = timeStamp;
+        
+        CFRelease(pixelBuffer);
+    }
 }
 
 
 - (void)onPlayToEnd:(LYPlayer *)player {
     self.mPlayButton.enabled = YES;
+//    self.mDisplayLink.paused = YES;
 }
 
 - (void)printAudioStreamBasicDescription:(AudioStreamBasicDescription)asbd {

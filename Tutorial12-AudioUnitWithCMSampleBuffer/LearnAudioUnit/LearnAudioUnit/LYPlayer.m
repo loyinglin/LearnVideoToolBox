@@ -122,7 +122,7 @@ static OSStatus PlayCallback(void *inRefCon,
             memcpy(ioData->mBuffers[i].mData, player->bufferList->mBuffers[i].mData + player->readedSize, ioData->mBuffers[i].mDataByteSize);
             player->readedSize += ioData->mBuffers[i].mDataByteSize;
         }
-        NSLog(@"out size: %d", ioData->mBuffers[0].mDataByteSize);
+//        NSLog(@"out size: %d", ioData->mBuffers[0].mDataByteSize);
     }
     return noErr;
 }

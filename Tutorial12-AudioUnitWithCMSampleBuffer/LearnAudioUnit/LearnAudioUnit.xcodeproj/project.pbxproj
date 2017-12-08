@@ -21,6 +21,9 @@
 		FDF4F40A1FD7E89300C711AF /* test.mov in Resources */ = {isa = PBXBuildFile; fileRef = FDF4F4031FD7E89300C711AF /* test.mov */; };
 		FDF4F40B1FD7E89300C711AF /* test.pcm in Resources */ = {isa = PBXBuildFile; fileRef = FDF4F4041FD7E89300C711AF /* test.pcm */; };
 		FDF4F4161FD8160D00C711AF /* LYPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = FDF4F4141FD8160D00C711AF /* LYPlayer.m */; };
+		FDF4F4391FDA403E00C711AF /* LYOpenGLView.m in Sources */ = {isa = PBXBuildFile; fileRef = FDF4F4361FDA403E00C711AF /* LYOpenGLView.m */; };
+		FDF4F43A1FDA403E00C711AF /* Shader.fsh in Resources */ = {isa = PBXBuildFile; fileRef = FDF4F4371FDA403E00C711AF /* Shader.fsh */; };
+		FDF4F43B1FDA403E00C711AF /* Shader.vsh in Resources */ = {isa = PBXBuildFile; fileRef = FDF4F4381FDA403E00C711AF /* Shader.vsh */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +46,10 @@
 		FDF4F4041FD7E89300C711AF /* test.pcm */ = {isa = PBXFileReference; lastKnownFileType = file; path = test.pcm; sourceTree = "<group>"; };
 		FDF4F4141FD8160D00C711AF /* LYPlayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LYPlayer.m; sourceTree = "<group>"; };
 		FDF4F4151FD8160D00C711AF /* LYPlayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LYPlayer.h; sourceTree = "<group>"; };
+		FDF4F4351FDA403E00C711AF /* LYOpenGLView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LYOpenGLView.h; sourceTree = "<group>"; };
+		FDF4F4361FDA403E00C711AF /* LYOpenGLView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LYOpenGLView.m; sourceTree = "<group>"; };
+		FDF4F4371FDA403E00C711AF /* Shader.fsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Shader.fsh; sourceTree = "<group>"; };
+		FDF4F4381FDA403E00C711AF /* Shader.vsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Shader.vsh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +82,7 @@
 		FDF4F3E61FD7E84A00C711AF /* LearnAudioUnit */ = {
 			isa = PBXGroup;
 			children = (
+				FDF4F4341FDA403E00C711AF /* GL */,
 				FDF4F3FD1FD7E89300C711AF /* CommonResource */,
 				FDF4F4151FD8160D00C711AF /* LYPlayer.h */,
 				FDF4F4141FD8160D00C711AF /* LYPlayer.m */,
@@ -104,6 +112,17 @@
 			);
 			name = CommonResource;
 			path = ../../../CommonResource;
+			sourceTree = "<group>";
+		};
+		FDF4F4341FDA403E00C711AF /* GL */ = {
+			isa = PBXGroup;
+			children = (
+				FDF4F4351FDA403E00C711AF /* LYOpenGLView.h */,
+				FDF4F4361FDA403E00C711AF /* LYOpenGLView.m */,
+				FDF4F4371FDA403E00C711AF /* Shader.fsh */,
+				FDF4F4381FDA403E00C711AF /* Shader.vsh */,
+			);
+			path = GL;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -165,12 +184,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				FDF4F4051FD7E89300C711AF /* abc.aac in Resources */,
+				FDF4F43A1FDA403E00C711AF /* Shader.fsh in Resources */,
 				FDF4F3F41FD7E84A00C711AF /* LaunchScreen.storyboard in Resources */,
 				FDF4F4061FD7E89300C711AF /* abc.m4a in Resources */,
 				FDF4F4091FD7E89300C711AF /* abc.pcm in Resources */,
 				FDF4F40B1FD7E89300C711AF /* test.pcm in Resources */,
 				FDF4F4071FD7E89300C711AF /* abc.mp3 in Resources */,
 				FDF4F3F11FD7E84A00C711AF /* Assets.xcassets in Resources */,
+				FDF4F43B1FDA403E00C711AF /* Shader.vsh in Resources */,
 				FDF4F40A1FD7E89300C711AF /* test.mov in Resources */,
 				FDF4F3EF1FD7E84A00C711AF /* Main.storyboard in Resources */,
 				FDF4F4081FD7E89300C711AF /* abc.mp4 in Resources */,
@@ -185,6 +206,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FDF4F3EC1FD7E84A00C711AF /* ViewController.m in Sources */,
+				FDF4F4391FDA403E00C711AF /* LYOpenGLView.m in Sources */,
 				FDF4F3F71FD7E84A00C711AF /* main.m in Sources */,
 				FDF4F3E91FD7E84A00C711AF /* AppDelegate.m in Sources */,
 				FDF4F4161FD8160D00C711AF /* LYPlayer.m in Sources */,
@@ -322,6 +344,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6X5L546LN9;
 				INFOPLIST_FILE = LearnAudioUnit/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
@@ -336,6 +359,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6X5L546LN9;
 				INFOPLIST_FILE = LearnAudioUnit/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
