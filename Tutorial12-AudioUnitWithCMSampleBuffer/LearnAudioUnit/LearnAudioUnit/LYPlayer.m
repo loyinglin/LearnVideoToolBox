@@ -65,7 +65,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                                       sizeof(flag));
     }
     if (status) {
-        NSLog(@"AudioUnitSetProperty error with status:%d", status);
+        NSLog(@"AudioUnitSetProperty error with status:%d", (int)status);
     }
     
     // format
@@ -78,7 +78,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
                                   &outputFormat,
                                   sizeof(outputFormat));
     if (status) {
-        NSLog(@"AudioUnitSetProperty eror with status:%d", status);
+        NSLog(@"AudioUnitSetProperty eror with status:%d", (int)status);
     }
     
     
@@ -95,7 +95,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     
     
     OSStatus result = AudioUnitInitialize(audioUnit);
-    NSLog(@"result %d", result);
+    NSLog(@"result %d", (int)result);
 }
 
 
@@ -122,7 +122,6 @@ static OSStatus PlayCallback(void *inRefCon,
             memcpy(ioData->mBuffers[i].mData, player->bufferList->mBuffers[i].mData + player->readedSize, ioData->mBuffers[i].mDataByteSize);
             player->readedSize += ioData->mBuffers[i].mDataByteSize;
         }
-//        NSLog(@"out size: %d", ioData->mBuffers[0].mDataByteSize);
     }
     return noErr;
 }

@@ -174,12 +174,12 @@
                                                                            kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment,
                                                                            &_blockBufferOut);
     if (err) {
-        NSLog(@"CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer error: %d", err);
+        NSLog(@"CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer error: %d", (int)err);
     }
     
     CMTime presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-    long timeStamp = (1000 * presentationTimeStamp.value) / presentationTimeStamp.timescale;
-    NSLog(@"audio timestamp %lu", timeStamp);
+    int timeStamp = (1000 * (int)presentationTimeStamp.value) / presentationTimeStamp.timescale;
+    NSLog(@"audio timestamp %d", timeStamp);
     self.mAudioTimeStamp = timeStamp;
     
     CFRelease(sampleBuffer);
@@ -203,8 +203,8 @@
         
         
         CMTime presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(videoSamepleBuffer);
-        long timeStamp = (1000 * presentationTimeStamp.value) / presentationTimeStamp.timescale;
-        NSLog(@"video timestamp %lu", timeStamp);
+        int timeStamp = (1000 * (int)presentationTimeStamp.value) / presentationTimeStamp.timescale;
+        NSLog(@"video timestamp %d", timeStamp);
         self.mVideoTimeStamp = timeStamp;
     }
     
