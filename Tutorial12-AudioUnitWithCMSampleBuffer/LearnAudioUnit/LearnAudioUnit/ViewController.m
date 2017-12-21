@@ -48,7 +48,6 @@
     [self.view addSubview:self.mGLView];
     
     self.mDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkCallback:)];
-//    self.mDisplayLink.frameInterval = 2; //FPS=30
     [[self mDisplayLink] addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
     [[self mDisplayLink] setPaused:YES];
     
@@ -159,9 +158,10 @@
 - (AudioBufferList *)onRequestAudioData {
     CMSampleBufferRef sampleBuffer = [self.mReaderAudioTrackOutput copyNextSampleBuffer];
     size_t bufferListSizeNeededOut = 0;
-//    if (self.blockBufferOut != nil) {
-//        CFRelease(self.blockBufferOut);
-//    }
+    if (self.blockBufferOut != NULL) {
+        CFRelease(self.blockBufferOut);
+        self.blockBufferOut = NULL;
+    }
     if (!sampleBuffer) {
         return NULL;
     }
@@ -182,6 +182,7 @@
     NSLog(@"audio timestamp %lu", timeStamp);
     self.mAudioTimeStamp = timeStamp;
     
+    CFRelease(sampleBuffer);
     
     return &_audioBufferList;
 }
@@ -205,9 +206,9 @@
         long timeStamp = (1000 * presentationTimeStamp.value) / presentationTimeStamp.timescale;
         NSLog(@"video timestamp %lu", timeStamp);
         self.mVideoTimeStamp = timeStamp;
-        
-        CFRelease(pixelBuffer);
     }
+    
+    CFRelease(videoSamepleBuffer);
 }
 
 
