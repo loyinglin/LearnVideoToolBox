@@ -34,6 +34,7 @@
 @property (nonatomic , strong) AVAssetReaderTrackOutput *mReaderVideoTrackOutput;
 @property (nonatomic , strong) CADisplayLink *mDisplayLink;
 
+// 时间戳
 @property (nonatomic, assign) long mAudioTimeStamp;
 @property (nonatomic, assign) long mVideoTimeStamp;
 @end
@@ -42,7 +43,6 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view, typically from a nib.
     
     [self.mGLView setupGL];
     [self.view addSubview:self.mGLView];
@@ -110,6 +110,7 @@
         if(fmtDesc ) {
             [self printAudioStreamBasicDescription:*fmtDesc];
         }
+        CFRelease(item);
     }
     
     outputSettings = [NSMutableDictionary dictionary];
@@ -196,6 +197,9 @@
 
 - (void)renderVideo {
     CMSampleBufferRef videoSamepleBuffer = [self.mReaderVideoTrackOutput copyNextSampleBuffer];
+    if (!videoSamepleBuffer) {
+        return ;
+    }
 
     CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(videoSamepleBuffer);
     if (pixelBuffer) {
