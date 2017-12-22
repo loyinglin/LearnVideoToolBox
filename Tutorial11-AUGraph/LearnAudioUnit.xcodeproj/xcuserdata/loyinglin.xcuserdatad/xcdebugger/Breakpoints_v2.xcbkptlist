@@ -10,12 +10,28 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "LearnAudioUnit/ViewController.m"
-            timestampString = "531218197.206677"
+            timestampString = "535618739.416685"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "221"
-            endingLineNumber = "221"
-            landmarkName = "RecordCallback"
+            startingLineNumber = "195"
+            endingLineNumber = "195"
+            landmarkName = "mixCallback0"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "LearnAudioUnit/ViewController.m"
+            timestampString = "535618739.416988"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "207"
+            endingLineNumber = "207"
+            landmarkName = "mixCallback1"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>

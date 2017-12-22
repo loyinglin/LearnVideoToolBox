@@ -87,7 +87,7 @@
     
     // audio session
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
-    [[AVAudioSession sharedInstance] setPreferredIOBufferDuration:0.05 error:nil];
+    [[AVAudioSession sharedInstance] setPreferredIOBufferDuration:0.02 error:nil];
     
     // buffer
     uint32_t numberBuffers = 1;
