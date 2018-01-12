@@ -93,14 +93,14 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     // format
     AudioStreamBasicDescription outputFormat;
     memset(&outputFormat, 0, sizeof(outputFormat));
-    outputFormat.mSampleRate       = 44100;
-    outputFormat.mFormatID         = kAudioFormatLinearPCM;
-    outputFormat.mFormatFlags      = kLinearPCMFormatFlagIsSignedInteger;
-    outputFormat.mFramesPerPacket  = 1;
-    outputFormat.mChannelsPerFrame = 1;
-    outputFormat.mBytesPerFrame    = 2;
-    outputFormat.mBytesPerPacket   = 2;
-    outputFormat.mBitsPerChannel   = 16;
+    outputFormat.mSampleRate       = 44100; // 采样率
+    outputFormat.mFormatID         = kAudioFormatLinearPCM; // PCM格式
+    outputFormat.mFormatFlags      = kLinearPCMFormatFlagIsSignedInteger; // 整形
+    outputFormat.mFramesPerPacket  = 1; // 每帧只有1个packet
+    outputFormat.mChannelsPerFrame = 1; // 声道数
+    outputFormat.mBytesPerFrame    = 2; // 每帧只有2个byte 声道*位深*Packet数
+    outputFormat.mBytesPerPacket   = 2; // 每个Packet只有2个byte
+    outputFormat.mBitsPerChannel   = 16; // 位深
     [self printAudioStreamBasicDescription:outputFormat];
 
     status = AudioUnitSetProperty(audioUnit,

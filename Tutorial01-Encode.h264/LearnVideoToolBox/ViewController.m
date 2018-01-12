@@ -153,12 +153,12 @@
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsRef);
         
         
-        //设置码率，上限，单位是bps
+        //设置码率，均值，单位是byte
         int bitRate = width * height * 3 * 4 * 8;
         CFNumberRef bitRateRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRate);
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_AverageBitRate, bitRateRef);
         
-        //设置码率，均值，单位是byte
+        //设置码率，上限，单位是bps
         int bitRateLimit = width * height * 3 * 4;
         CFNumberRef bitRateLimitRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRateLimit);
         VTSessionSetProperty(EncodingSession, kVTCompressionPropertyKey_DataRateLimits, bitRateLimitRef);
