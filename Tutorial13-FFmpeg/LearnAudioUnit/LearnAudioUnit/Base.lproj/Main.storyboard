@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="13529" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+    <device id="retina4_7" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13527"/>
+        <capability name="Aspect ratio constraints" minToolsVersion="5.1"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="tne-QT-ifu">
+            <objects>
+                <viewController id="BYZ-38-t0r" customClass="ViewController" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="8i6-lG-94i">
+                                <rect key="frame" x="172" y="120" width="31" height="30"/>
+                                <state key="normal" title="播放"/>
+                                <connections>
+                                    <action selector="onClick:" destination="BYZ-38-t0r" eventType="touchUpInside" id="SpV-xs-BjU"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="使用AudioUnit播放CMSampleBuffer的音频" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="60O-QF-GSf">
+                                <rect key="frame" x="24" y="70" width="327" height="21"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="TyD-E1-AzN" customClass="LYOpenGLView">
+                                <rect key="frame" x="0.0" y="292" width="375" height="375"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" secondItem="TyD-E1-AzN" secondAttribute="height" multiplier="1:1" id="V2U-Hl-R9y"/>
+                                </constraints>
+                            </view>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="使用OpenGL播放CMSampleBuffer的视频" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lj5-uC-YIv">
+                                <rect key="frame" x="30" y="251" width="315" height="21"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
+                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="TyD-E1-AzN" secondAttribute="bottom" id="36J-Mn-3Tq"/>
+                            <constraint firstItem="8i6-lG-94i" firstAttribute="top" secondItem="60O-QF-GSf" secondAttribute="top" constant="50" id="8ro-4v-0nT"/>
+                            <constraint firstItem="TyD-E1-AzN" firstAttribute="top" secondItem="lj5-uC-YIv" secondAttribute="bottom" constant="20" id="FyA-sO-Ugz"/>
+                            <constraint firstItem="60O-QF-GSf" firstAttribute="centerX" secondItem="6Tk-OE-BBY" secondAttribute="centerX" id="Hud-Qh-76U"/>
+                            <constraint firstItem="lj5-uC-YIv" firstAttribute="centerX" secondItem="TyD-E1-AzN" secondAttribute="centerX" id="S9O-nc-mTS"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="TyD-E1-AzN" secondAttribute="trailing" id="Uk4-Gk-D6g"/>
+                            <constraint firstItem="TyD-E1-AzN" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="dzY-93-rnX"/>
+                            <constraint firstItem="60O-QF-GSf" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="50" id="gla-p5-R9P"/>
+                            <constraint firstItem="8i6-lG-94i" firstAttribute="centerX" secondItem="60O-QF-GSf" secondAttribute="centerX" id="hER-sa-IVf"/>
+                        </constraints>
+                        <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+                    </view>
+                    <connections>
+                        <outlet property="mGLView" destination="TyD-E1-AzN" id="7kj-qR-9hG"/>
+                        <outlet property="mPlayButton" destination="8i6-lG-94i" id="K6z-sR-5Yc"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
+            </objects>
+        </scene>
+    </scenes>
+</document>
