@@ -227,6 +227,7 @@ const GLfloat kColorConversion601FullRange[] = {
 			_preferredConversion = kColorConversion709;
 		}
     
+//        _preferredConversion = kColorConversion601FullRange;
 		/*
          CVOpenGLESTextureCacheCreateTextureFromImage will create GLES texture optimally from CVPixelBufferRef.
          */

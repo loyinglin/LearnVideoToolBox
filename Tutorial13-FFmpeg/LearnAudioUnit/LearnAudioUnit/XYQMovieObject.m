@@ -23,6 +23,7 @@
     int                 videoStream;
     double              fps;
     BOOL                isReleaseResources;
+    CVPixelBufferPoolRef pixelBufferPool;
 }
 
 #pragma mark ------------------------------------
@@ -212,6 +213,61 @@ initError:
     return image;
 }
 
+- (CVPixelBufferRef)getCurrentCVPixelBuffer {
+    AVFrame *frame = XYQFrame;
+    if(!frame || !frame->data[0]){
+        return nil;
+    }
+    
+    CVReturn theError;
+    if (!pixelBufferPool){
+        NSMutableDictionary* attributes = [NSMutableDictionary dictionary];
+        [attributes setObject:[NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarFullRange] forKey:(NSString*)kCVPixelBufferPixelFormatTypeKey];
+        [attributes setObject:[NSNumber numberWithInt:frame->width] forKey: (NSString*)kCVPixelBufferWidthKey];
+        [attributes setObject:[NSNumber numberWithInt:frame->height] forKey: (NSString*)kCVPixelBufferHeightKey];
+        [attributes setObject:@(frame->linesize[0]) forKey:(NSString*)kCVPixelBufferBytesPerRowAlignmentKey];
+        [attributes setObject:[NSDictionary dictionary] forKey:(NSString*)kCVPixelBufferIOSurfacePropertiesKey];
+        
+        theError = CVPixelBufferPoolCreate(kCFAllocatorDefault, NULL, (__bridge CFDictionaryRef) attributes, &pixelBufferPool);
+        if (theError != kCVReturnSuccess){
+            NSLog(@"CVPixelBufferPoolCreate Failed");
+        }
+    }
+    
+    CVPixelBufferRef pixelBuffer = nil;
+    theError = CVPixelBufferPoolCreatePixelBuffer(NULL, pixelBufferPool, &pixelBuffer);
+    if(theError != kCVReturnSuccess){
+        NSLog(@"CVPixelBufferPoolCreatePixelBuffer Failed");
+    }
+    CVBufferSetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrix_ITU_R_601_4, kCVImageBufferYCbCrMatrixKey, kCVAttachmentMode_ShouldPropagate);
+    CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+    size_t bytePerRowY = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0);
+    size_t bytesPerRowUV = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 1);
+    void* base = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0);
+    memcpy(base, frame->data[0], bytePerRowY * frame->height);
+    base = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1);
+//    memcpy(base, frame->data[1], bytesPerRowUV * frame->height / 2);
+    
+    uint32_t size = frame->linesize[1] * frame->height;
+    uint8_t* dstData = malloc(2 * size);
+    for (int i = 0; i < 2 * size; i++){
+        if (i % 2 == 0){
+            dstData[i] = frame->data[1][i/2];
+        }else {
+            dstData[i] = frame->data[2][i/2];
+        }
+    }
+    memcpy(base, dstData, bytesPerRowUV * frame->height / 2);
+    /*
+     这里的前提是AVFrame中yuv的格式是nv12；
+     但如果AVFrame是yuv420p，就需要把frame->data[1]和frame->data[2]的每一个字节交叉存储到pixelBUffer的plane1上，即把原来的uuuu和vvvv，保存成uvuvuvuv
+     */
+    
+    
+    CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+    
+    return pixelBuffer;
+}
 #pragma mark --------------------------
 #pragma mark - 释放资源
 - (void)releaseResources {

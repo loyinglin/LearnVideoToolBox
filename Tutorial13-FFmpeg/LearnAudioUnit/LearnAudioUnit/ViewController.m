@@ -58,7 +58,10 @@
     
 //    [self loadAsset];
     
-    self.video = [[XYQMovieObject alloc] initWithVideo:@"http://wvideo.spriteapp.cn/video/2016/0328/56f8ec01d9bfe_wpd.mp4"];
+    NSString *filePath;
+//    filePath = @"http://wvideo.spriteapp.cn/video/2016/0328/56f8ec01d9bfe_wpd.mp4";
+    filePath = [[NSBundle mainBundle] pathForResource:@"abc" ofType:@"mp4"];
+    self.video = [[XYQMovieObject alloc] initWithVideo:filePath];
     
     [self.video seekTime:0.0];
     
@@ -212,7 +215,7 @@
         return;
     }
     
-    CVPixelBufferRef pixelBuffer = [self getCVBufferFromData:[self.video getYUVdata] toYUVPixelBufferWithWidth:self.video.sourceWidth Height:self.video.sourceHeight];
+    CVPixelBufferRef pixelBuffer = [self.video getCurrentCVPixelBuffer];
     if (pixelBuffer) {
         self.mGLView.isFullYUVRange = YES;
         [self.mGLView displayPixelBuffer:pixelBuffer];
@@ -252,6 +255,7 @@
     
     return pixelBuffer;
 }
+
 
 
 static OSType KVideoPixelFormatType = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;

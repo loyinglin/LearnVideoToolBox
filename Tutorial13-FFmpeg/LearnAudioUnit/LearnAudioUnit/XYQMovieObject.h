@@ -49,4 +49,5 @@
 
 - (uint8_t *)getYUVdata;
 
+- (CVPixelBufferRef)getCurrentCVPixelBuffer;
 @end
