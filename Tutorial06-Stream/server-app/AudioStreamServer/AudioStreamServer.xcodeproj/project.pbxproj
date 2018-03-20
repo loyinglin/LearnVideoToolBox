@@ -7,15 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FD7837472061234700846F33 /* abc.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FD7837462061234700846F33 /* abc.mp3 */; };
 		FDDA85421E8FCCFA009E7656 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = FDDA85411E8FCCFA009E7656 /* AppDelegate.m */; };
 		FDDA85451E8FCCFA009E7656 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FDDA85441E8FCCFA009E7656 /* main.m */; };
 		FDDA85481E8FCCFA009E7656 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FDDA85471E8FCCFA009E7656 /* ViewController.m */; };
 		FDDA854A1E8FCCFA009E7656 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FDDA85491E8FCCFA009E7656 /* Assets.xcassets */; };
 		FDDA854D1E8FCCFA009E7656 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FDDA854B1E8FCCFA009E7656 /* Main.storyboard */; };
-		FDDA85551E8FCD75009E7656 /* chenli.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FDDA85541E8FCD75009E7656 /* chenli.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		FD7837462061234700846F33 /* abc.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = abc.mp3; path = ../../../../CommonResource/abc.mp3; sourceTree = "<group>"; };
 		FDDA853D1E8FCCFA009E7656 /* AudioStreamServer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioStreamServer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FDDA85401E8FCCFA009E7656 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		FDDA85411E8FCCFA009E7656 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -25,7 +26,6 @@
 		FDDA85491E8FCCFA009E7656 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FDDA854C1E8FCCFA009E7656 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		FDDA854E1E8FCCFA009E7656 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		FDDA85541E8FCD75009E7656 /* chenli.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = chenli.mp3; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,7 +58,7 @@
 		FDDA853F1E8FCCFA009E7656 /* AudioStreamServer */ = {
 			isa = PBXGroup;
 			children = (
-				FDDA85541E8FCD75009E7656 /* chenli.mp3 */,
+				FD7837462061234700846F33 /* abc.mp3 */,
 				FDDA85401E8FCCFA009E7656 /* AppDelegate.h */,
 				FDDA85411E8FCCFA009E7656 /* AppDelegate.m */,
 				FDDA85461E8FCCFA009E7656 /* ViewController.h */,
@@ -138,8 +138,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FD7837472061234700846F33 /* abc.mp3 in Resources */,
 				FDDA854A1E8FCCFA009E7656 /* Assets.xcassets in Resources */,
-				FDDA85551E8FCD75009E7656 /* chenli.mp3 in Resources */,
 				FDDA854D1E8FCCFA009E7656 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -303,6 +303,7 @@
 				FDDA85531E8FCCFA009E7656 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
