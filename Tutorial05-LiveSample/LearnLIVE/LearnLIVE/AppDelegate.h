@@ -2,8 +2,8 @@
 //  AppDelegate.h
 //  LearnLIVE
 //
-//  Created by 林伟池 on 16/9/22.
-//  Copyright © 2016年 林伟池. All rights reserved.
+//  Created by loyinglin on 16/9/22.
+//  Copyright © 2016年 loyinglin. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
